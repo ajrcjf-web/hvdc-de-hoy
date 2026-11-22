@@ -2,6 +2,13 @@
 
 Capítulos de un posible libro sobre transmisión HVDC, cada uno con sus simuladores interactivos.
 
+## Capítulo 4 · Los equipos de la estación VSC
+
+- **Capítulo en PDF:** [docs/capitulo-4-los-equipos-de-la-estacion-vsc.pdf](docs/capitulo-4-los-equipos-de-la-estacion-vsc.pdf)
+- **Simulador:** [Energización y precarga de un MMC](https://ajrcjf-web.github.io/hvdc-de-hoy/precarga.html). Escenarios: `#base`, `#sin-resistencia`, `#resistencia-chica`, `#resistencia-grande`, `#bypass-temprano`.
+
+![Simulador de energización y precarga](docs/captura-precarga.jpg)
+
 ## Capítulo 3 · El VSC por dentro
 
 - **Capítulo en PDF:** [docs/capitulo-3-el-vsc-por-dentro.pdf](docs/capitulo-3-el-vsc-por-dentro.pdf)
@@ -47,7 +54,7 @@ Los costos, resistencias y anchos de franja son valores típicos ilustrativos, n
 
 ## Uso
 
-Cada simulador es una sola página HTML sin dependencias de compilación: abrir `index.html`, `topologias.html`, `multiterminal.html` o `mmc.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
+Cada simulador es una sola página HTML sin dependencias de compilación: abrir `index.html`, `topologias.html`, `multiterminal.html`, `mmc.html` o `precarga.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
 
 ## Licencia
 
