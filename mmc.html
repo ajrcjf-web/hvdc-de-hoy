@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dentro de un MMC: submódulos, corrientes y balance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#18222d; --muted:#5b6876; --rule:#d5dbe1;
+  --accent:#0b6a8f; --accent-soft:#dcedf4;
+  --ok:#2c7a4b; --warn:#b26a00; --crit:#c0342b; --off:#9aa5b0;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#6b3fa0;
+  --display:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+    --accent:#5cb8dc; --accent-soft:#1d3a48;
+    --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+  --accent:#5cb8dc; --accent-soft:#1d3a48;
+  --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1260px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline;justify-content:space-between}
+.crumbs{font-size:13px;color:var(--muted)} .crumbs a{color:var(--accent)}
+h1{font-family:var(--display);font-size:26px;font-weight:600;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin:0;color:var(--muted)}
+h3{font-size:13px;font-weight:600;margin:0}
+.formula{font-family:var(--mono);font-size:14px;color:var(--muted)} .formula b{color:var(--ink);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px 16px}
+.col{display:flex;flex-direction:column;gap:10px}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:14px;align-items:start}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:13px;padding:6px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
+button:hover{background:var(--accent-soft)}
+button[aria-pressed="true"],button.primary{background:var(--accent);color:var(--surface)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.row label{font-size:14px}
+.row output{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+.row input[type=range]{grid-column:1/-1}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--surface);color:var(--ink);max-width:100%}
+.lab{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.status{font-size:14px;padding:8px 12px;border-radius:4px;background:var(--accent-soft);border-left:4px solid var(--accent)}
+.status.crit{border-left-color:var(--crit)} .status.warn{border-left-color:var(--warn)} .status.ok{border-left-color:var(--ok)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{border:1px solid var(--rule);border-left:4px solid var(--rule);border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;background:var(--surface)}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .s{font-size:12px;color:var(--muted)}
+.tile.ok{border-left-color:var(--ok)} .tile.warn{border-left-color:var(--warn)} .tile.crit{border-left-color:var(--crit)} .tile.ac{border-left-color:var(--accent)}
+svg{width:100%;height:auto;display:block}
+.chart{display:flex;flex-direction:column;gap:4px}
+.chart svg{touch-action:none}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted)}
+.clegend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.clegend i.dash{border-top-style:dashed}
+.clegend b.sw{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:6px;opacity:.5}
+.readout{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;font-variant-numeric:tabular-nums}
+.gridl{stroke:var(--rule);stroke-width:1} .zero{stroke:var(--muted);stroke-width:1}
+.axt{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.endl{font-family:var(--body);font-size:11px;fill:var(--ink)}
+.cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3}
+.lbl{font-family:var(--body);font-size:12px;font-weight:600;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.eq{font-family:var(--mono);font-size:14px;background:var(--bg);border-radius:4px;padding:8px 10px;line-height:1.7;overflow-x:auto;white-space:nowrap}
+.eq b{color:var(--accent)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.notes p{margin:6px 0 0;font-size:14px;color:var(--muted);max-width:65ch}
+@media (max-width:940px){.main{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ctrl{display:flex;flex-direction:column;gap:12px}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.btns button{font-size:12.5px;padding:4px 9px}
+.tile.crit{border-left-color:var(--crit)} .tile.warn{border-left-color:var(--warn)} .tile.ok{border-left-color:var(--ok)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.leg{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+#leg{width:100%;display:block}
+@media (max-width:940px){.two,.leg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="col" style="gap:2px"><span class="crumbs">Capítulo 3 · El VSC por dentro · <a href="topologias.html">topologías</a> · <a href="multiterminal.html">multiterminal</a></span>
+    <h1>Dentro de un MMC: submódulos, corrientes y balance</h1></div>
+    <div class="formula">ramas: <b>i<sub>u,l</sub> = I<sub>DC</sub>/3 ± i<sub>AC</sub>/2 + i<sub>circ</sub></b> &nbsp;·&nbsp; <b>v<sub>u</sub> + v<sub>l</sub> = V<sub>DC</sub></b> &nbsp;·&nbsp; <b>N = V<sub>DC</sub>/V<sub>SM</sub></b></div>
+  </header>
+  <div class="tiles" id="tiles"></div>
+  <div class="main">
+    <div class="col" style="gap:14px">
+      <section class="panel col" style="gap:10px" aria-label="Una fase por dentro">
+        <h2>Una fase por dentro · ±320 kV · 1000 MVA</h2>
+        <div class="status" id="status" role="status"></div>
+        <div class="leg">
+          <div><svg id="leg" viewBox="0 0 300 470" role="img" aria-label="Rama superior e inferior con los submódulos insertados y puenteados"></svg>
+            <div class="row"><label for="th">Instante del ciclo</label><output id="o_th"></output><input type="range" id="th" min="0" max="99" step="1"></div>
+            <div class="btns"><button type="button" id="play">Animar</button></div></div>
+          <div class="col" style="gap:12px">
+            <div class="chart"><h3>Tensión de fase: escalones y referencia (kV)</h3><div class="clegend"><span><i style="border-color:var(--s1)"></i>tensión que sintetiza el MMC</span><span><i class="dash" style="border-color:var(--s2)"></i>referencia</span></div>
+              <svg id="c1" viewBox="0 0 520 190"></svg><div class="readout" id="r1"></div></div>
+            <div class="chart"><h3>Corrientes de rama (kA)</h3><div class="clegend"><span><i style="border-color:var(--s1)"></i>rama superior</span><span><i style="border-color:var(--s2)"></i>rama inferior</span><span><i class="dash" style="border-color:var(--s3)"></i>componente común (I<sub>DC</sub>/3 + circulante)</span></div>
+              <svg id="c2" viewBox="0 0 520 190"></svg><div class="readout" id="r2"></div></div>
+          </div>
+        </div>
+        <div class="chart"><h3>Tensión de cada condensador de la rama superior (kV)</h3><div class="clegend" id="leg3"></div>
+          <svg id="c3" viewBox="0 0 860 200"></svg><div class="readout" id="r3"></div></div>
+      </section>
+      <section class="panel col" style="gap:10px" aria-label="Capacidad y fallas">
+        <h2>Capacidad P–Q y falla en la línea DC</h2>
+        <div class="two">
+          <div class="chart"><h3>Diagrama P–Q de la estación</h3><svg id="pq" viewBox="0 0 400 300"></svg><p class="hint">Círculo: límite de 1000 MVA. El VSC elige P y Q por separado dentro de él.</p></div>
+          <div class="chart"><h3>Corriente DC tras un cortocircuito entre polos (kA)</h3><div class="clegend"><span><i style="border-color:var(--crit)"></i>medio puente</span><span><i style="border-color:var(--ok)"></i>puente completo</span></div>
+            <svg id="c5" viewBox="0 0 400 260"></svg><p class="hint" id="h5"></p></div>
+        </div>
+      </section>
+    </div>
+    <section class="panel ctrl" aria-label="Controles">
+      <h2>Escenarios</h2>
+      <div class="btns" id="presets"></div>
+      <h2>Convertidor</h2>
+      <div class="row"><label for="n">Submódulos por rama (N)</label><output id="o_n"></output><input type="range" id="n" min="4" max="40" step="1"></div>
+      <div class="row"><label for="w">Energía almacenada</label><output id="o_w"></output><input type="range" id="w" min="10" max="50" step="1"></div>
+      <h2>Punto de operación</h2>
+      <div class="row"><label for="p">Potencia activa P</label><output id="o_p"></output><input type="range" id="p" min="-1000" max="1000" step="50"></div>
+      <div class="row"><label for="q">Potencia reactiva Q</label><output id="o_q"></output><input type="range" id="q" min="-600" max="600" step="50"></div>
+      <h2>Control</h2>
+      <div class="btns"><button type="button" id="bal">Balance de condensadores</button><button type="button" id="sup">Supresión de corriente circulante</button></div>
+      <p class="hint">Modulación por nivel más cercano (NLC). Cada SM equivalente representa varios submódulos reales: un MMC de ±320 kV tiene unos 320 por rama. La energía total se mantiene al cambiar N. P &gt; 0: la estación rectifica. Q &gt; 0: entrega reactiva a la red.</p>
+    </section>
+  </div>
+  <section class="notes">
+    <div class="panel"><h2>Cómo leerlo</h2><p>Mueva el instante del ciclo o pulse Animar y mire qué submódulos se insertan (relleno) y cuáles se puentean. Luego apague el balance o la supresión de corriente circulante y compare las tensiones de los condensadores y las corrientes de rama.</p></div>
+    <div class="panel"><h2>Qué calcula</h2><p>Simulación temporal de una fase (paso de 20 µs, 0,3 s, se muestran los dos últimos ciclos): corriente AC impuesta según P y Q, número de SM insertados por nivel más cercano, carga de cada condensador con la corriente de su rama, y dinámica de la corriente común en los reactores de rama.</p></div>
+    <div class="panel"><h2>Qué deja fuera</h2><p>La red AC y su impedancia, las otras dos fases, los lazos dq de corriente, las pérdidas en los semiconductores y los detalles de la protección. La curva de falla DC es ilustrativa, no una simulación del circuito.</p></div>
+  </section>
+</div>
+<script>
+/* ===== Utilidades de dibujo ===== */
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}, parent, text){ const e=document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]); if(text!==undefined) e.textContent=text; if(parent) parent.appendChild(e); return e; }
+const fmt = (v,d=0) => { if(!isFinite(v)) return '∞'; const r = Math.abs(v) < 0.5*Math.pow(10,-d) ? 0 : v; return r.toFixed(d).replace('-', '−').replace('.', ','); };
+const signed = (v,d=0) => { const t = fmt(v,d); return (v>0 && !/^0(,0+)?$/.test(t) ? '+' : '') + t; };
+function niceStep(range, n){ const raw=range/n, p=Math.pow(10,Math.floor(Math.log10(raw))), m=raw/p; return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p; }
+/* Gráfico de líneas genérico. series: [{c, data, dash, short, w}] sobre xs. */
+function lineChart(svg, xs, series, o){
+  const vb=svg.viewBox.baseVal, W=vb.width, H=vb.height, L=o.L??48, R=o.R??120, T=o.T??10, B=o.B??24;
+  svg.innerHTML='';
+  const x0=o.x0??xs[0], x1=o.x1??xs[xs.length-1], y0=o.y0, y1=o.y1;
+  const X=v=>L+(W-L-R)*(v-x0)/(x1-x0), Y=v=>T+(H-T-B)*(y1-Math.max(y0,Math.min(y1,v)))/(y1-y0);
+  if(o.under) o.under(svg,X,Y);
+  const st=o.ystep||niceStep(y1-y0,4);
+  for(let v=Math.ceil(y0/st-1e-9)*st; v<=y1+1e-9; v+=st){
+    el('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:Math.abs(v)<1e-9?'zero':'gridl'},svg);
+    el('text',{x:L-6,y:Y(v)+4,class:'axt','text-anchor':'end'},svg,fmt(v,o.ydec??0)); }
+  const xst=o.xstep||niceStep(x1-x0,6);
+  for(let v=Math.ceil(x0/xst-1e-9)*xst; v<=x1+1e-9; v+=xst)
+    el('text',{x:X(v),y:H-6,class:'axt','text-anchor':'middle'},svg,fmt(v,o.xdec??0)+(o.xunit||''));
+  if(o.mid) o.mid(svg,X,Y);
+  const ends=[];
+  for(const s of series){
+    let pen=false; const d=s.data.map((v,i)=>{ if(v===null||!isFinite(v)){ pen=false; return ''; } const c=(pen?'L':'M')+X(xs[i]).toFixed(1)+' '+Y(v).toFixed(1); pen=true; return c; }).join('');
+    el('path',{d,fill:'none',stroke:`var(--${s.c})`,'stroke-width':s.w||2,'stroke-dasharray':s.dash?'6 4':'none','stroke-linejoin':'round'},svg);
+    if(s.short && o.ends!==false){ const n=s.data.length-1;
+      el('circle',{cx:X(xs[n]),cy:Y(s.data[n]),r:3.5,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2},svg);
+      ends.push({y:Y(s.data[n]),t:s.short+(s.endv!==false?' '+fmt(s.data[n],o.edec??o.ydec??0)+(o.unit?' '+o.unit:''):'')}); }
+  }
+  ends.sort((a,b)=>a.y-b.y); for(let i=1;i<ends.length;i++) if(ends[i].y-ends[i-1].y<13) ends[i].y=ends[i-1].y+13;
+  for(const e of ends) el('text',{x:W-R+9,y:e.y+4,class:'endl'},svg,e.t);
+  if(o.over) o.over(svg,X,Y);
+  return {X,Y,L,R,T,B,W,H};
+}
+/* Capa de lectura con cursor */
+function hoverLayer(svg, g, xs, series, ro, txt){
+  const cross=el('line',{y1:g.T,y2:g.H-g.B,class:'cross',style:'display:none'},svg);
+  const dots=series.map(s=>el('circle',{r:4,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2,style:'display:none'},svg));
+  const hit=el('rect',{x:g.L,y:g.T,width:g.W-g.L-g.R,height:g.H-g.T-g.B,fill:'transparent'},svg);
+  const move=e=>{ const b=svg.getBoundingClientRect(); const px=(e.clientX-b.left)*g.W/b.width;
+    let i=0, best=1e9; for(let k=0;k<xs.length;k++){ const dd=Math.abs(g.X(xs[k])-px); if(dd<best){best=dd;i=k;} }
+    cross.setAttribute('x1',g.X(xs[i])); cross.setAttribute('x2',g.X(xs[i])); cross.style.display='';
+    series.forEach((s,k)=>{ dots[k].setAttribute('cx',g.X(xs[i])); dots[k].setAttribute('cy',g.Y(s.data[i])); dots[k].style.display=''; });
+    ro.textContent=txt(i); };
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerdown',move);
+  hit.addEventListener('pointerleave',()=>{ cross.style.display='none'; dots.forEach(d=>d.style.display='none'); });
+}
+function arrow(svg, x1,y1,x2,y2, color, w=2.5, head=9){
+  const a=Math.atan2(y2-y1,x2-x1), L=Math.hypot(x2-x1,y2-y1); if(L<1) return;
+  const hx=x2-head*Math.cos(a), hy=y2-head*Math.sin(a);
+  el('line',{x1,y1,x2:hx,y2:hy,stroke:color,'stroke-width':w,'stroke-linecap':'round'},svg);
+  el('polygon',{points:`${x2},${y2} ${hx+head*0.45*Math.sin(a)},${hy-head*0.45*Math.cos(a)} ${hx-head*0.45*Math.sin(a)},${hy+head*0.45*Math.cos(a)}`,fill:color},svg);
+}
+
+// Simulación de una fase de un MMC de medio puente (rama superior e inferior) en el tiempo.
+// Unidades: kV, kA, MW, ms internamente en s. Corriente de rama positiva: del polo + hacia el nodo AC (rama superior)
+// y del nodo AC hacia el polo − (rama inferior); con esa convención, una corriente positiva carga los SM insertados.
+function mmcSim(o){
+  const {N, P, Q, bal, sup, W, Vdc=640, S=1000, f=50} = o;
+  const w = 2*Math.PI*f, Vsm = Vdc/N, m = 0.85;
+  const E = m*Vdc/2;                                  // pico de la tensión interna de fase (kV)
+  const C = 2*W*1e-3*S / (6*N*Vsm*Vsm);              // F por SM, con W en kJ/MVA (kV²·F = MJ → ajustar)
+  // kV²·F = 1e6 J. Energía total 6N·½C·Vsm² (MJ) = W(kJ/MVA)·S(MVA)/1000 → C = 2·W·S/1000 /(6N·Vsm²)
+  const Lr = o.Lr||0.05, R = o.R||2.0;                         // H, Ω por rama
+  const Ipk = 2*Math.hypot(P,Q)/3 / E;               // kA pico de fase: S/3 = E·I/2
+  const phi = Math.atan2(Q,P);                       // corriente atrasada para Q>0 (entrega reactiva a la red, convención generador)
+  const Idc = P / Vdc;                               // kA
+  const dt = 2e-5, Tsim = 0.3, steps = Math.round(Tsim/dt), Tshow = 0.04, kshow = Math.round((Tsim-Tshow)/dt);
+  const vu = Array(N).fill(Vsm), vl = Array(N).fill(Vsm);
+  let ic = Idc/3, xi = 0, fav = Vdc/N, fdu = 0;
+  const out = {t:[], e:[], vph:[], iu:[], il:[], ic:[], iac:[], nu:[], vcu:Array.from({length:N},()=>[]), vcl:Array.from({length:N},()=>[]), insU:[], insL:[]};
+  const pick = (v, n, i, balance) => {
+    const idx = [...Array(N).keys()];
+    if (!balance) return idx.slice(0, n);
+    idx.sort((a,b)=> i>=0 ? v[a]-v[b] : v[b]-v[a]);   // corriente que carga: insertar los más descargados
+    return idx.slice(0, n);
+  };
+  const dec = 4;
+  for (let k=0; k<steps; k++){
+    const t = k*dt, th = w*t;
+    const iac = Ipk*Math.sin(th - phi);              // corriente de fase hacia la red
+    const iu = ic + iac/2, il = ic - iac/2;
+    const e = E*Math.sin(th);
+    // control de corriente circulante: tensión común que fuerza ic → Idc/3
+    let vc = 0;
+    if (sup){
+      const vavg = (vu.reduce((a,b)=>a+b,0)+vl.reduce((a,b)=>a+b,0))/(2*N);
+      const du = (vu.reduce((a,b)=>a+b,0)-vl.reduce((a,b)=>a+b,0))/N;   // desbalance de energía entre ramas
+      fav += (vavg-fav)*dt/0.02; fdu += (du-fdu)*dt/0.02;          // filtrados: solo la componente lenta
+      const icRef = Idc/3 + 0.08*(Vsm - fav)*N/12 + 0.06*fdu*N/12*Math.sin(th);   // control de energía total y entre ramas
+      const err = icRef - ic; xi += err*dt; vc = -(300*err + 40000*xi); }
+    const vuRef = Vdc/2 - e + vc, vlRef = Vdc/2 + e + vc;
+    const avgU = sup ? vu.reduce((a,b)=>a+b,0)/N : Vsm, avgL = sup ? vl.reduce((a,b)=>a+b,0)/N : Vsm;
+    const nu = Math.max(0, Math.min(N, Math.round(vuRef/avgU))), nl = Math.max(0, Math.min(N, Math.round(vlRef/avgL)));
+    const balNow = bal || k<kshow;                    // sin balance: se apaga al comenzar la ventana mostrada
+    const su = pick(vu, nu, iu, balNow), sl = pick(vl, nl, il, balNow);
+    let Vu = 0, Vl = 0;
+    for (const j of su){ Vu += vu[j]; vu[j] = Math.max(0, vu[j] + iu*dt/C); }   // kA·s/F = kV
+    for (const j of sl){ Vl += vl[j]; vl[j] = Math.max(0, vl[j] + il*dt/C); }
+    // lazo común: Vdc − Vu − Vl = 2(L dic/dt + R ic)
+    ic += dt*((Vdc - Vu - Vl)/2 - R*ic)/Lr;
+    if (k>=kshow && (k-kshow)%dec===0){
+      out.t.push((t-(Tsim-Tshow))*1000); out.e.push(e); out.vph.push((Vl - Vu)/2); out.iu.push(iu); out.il.push(il); out.ic.push(ic); out.iac.push(iac); out.nu.push(nu);
+      for (let j=0;j<N;j++){ out.vcu[j].push(vu[j]); out.vcl[j].push(vl[j]); }
+      out.insU.push(su.slice()); out.insL.push(sl.slice());
+    }
+  }
+  let a2=0,b2=0; const nn=out.t.length; for(let i=0;i<nn;i++){ const th=2*Math.PI*2*f*out.t[i]/1000; a2+=out.ic[i]*Math.cos(th); b2+=out.ic[i]*Math.sin(th); }
+  const ic2 = 2*Math.hypot(a2,b2)/nn;
+  const all = out.vcu.flat(), vmax=Math.max(...all), vmin=Math.min(...all);
+  const icA = out.ic.map(x=>x-Idc/3), icRipple = (Math.max(...icA)-Math.min(...icA))/2;
+  const avgEach = out.vcu.map(a=>a.reduce((s,x)=>s+x,0)/a.length);
+  const spread = Math.max(...avgEach)-Math.min(...avgEach);
+  return {...out, Vsm, C, Ipk, Idc, E, vmax, vmin, ripple:100*(vmax-vmin)/2/Vsm, icRipple, ic2, spread, spreadPct:100*spread/Vsm, levels:N+1};
+}
+// Falla DC polo a polo: corriente DC de la estación, ilustrativa. Devuelve series en ms y kA.
+function dcFault(o){
+  const {Vdc=640, Idc0=1.56, Lloop=0.035*2/3+0.05, Iblk=3.0, Iac=4.2} = o;
+  const t=[], hb=[], fb=[]; const di = Vdc/Lloop/1000; // kA/ms
+  const tb = Math.max(0,(Iblk-Idc0)/di);
+  for (let k=0;k<=400;k++){ const x=k*0.025; t.push(x);
+    const rise = Idc0 + di*Math.min(x,tb);
+    if (x<=tb){ hb.push(rise); fb.push(rise); continue; }
+    const s=x-tb;
+    // medio puente: tras el bloqueo, la red AC alimenta la falla a través de los diodos (con rizado de 6 pulsos)
+    hb.push(Iac + (Iblk-Iac)*Math.exp(-s/2.5) + 0.08*Iac*Math.abs(Math.sin(Math.PI*s/(10/6)))*(1-Math.exp(-s/2)));
+    // puente completo: los SM se insertan con polaridad inversa y llevan la corriente a cero
+    fb.push(Math.max(0, Iblk - Iblk*s/1.6));
+  }
+  return {t, hb, fb, tb};
+}
+
+const S={n:12, w:35, p:1000, q:0, bal:true, sup:true, k:0};
+const PRE={
+  'base':['Rectificador a plena carga',{n:12,w:35,p:1000,q:0,bal:true,sup:true}],
+  'pocos-niveles':['Solo 5 niveles',{n:4,w:35,p:1000,q:0,bal:true,sup:true}],
+  'muchos-niveles':['41 niveles',{n:40,w:35,p:1000,q:0,bal:true,sup:true}],
+  'inversor':['Inversor',{n:12,w:35,p:-1000,q:0,bal:true,sup:true}],
+  'reactiva':['Solo reactiva (STATCOM)',{n:12,w:35,p:0,q:600,bal:true,sup:true}],
+  'sin-supresion':['Sin supresión de circulante',{n:12,w:35,p:1000,q:0,bal:true,sup:false}],
+  'sin-balance':['Sin balance de condensadores',{n:12,w:35,p:1000,q:0,bal:false,sup:true}],
+  'poca-energia':['Condensadores chicos',{n:12,w:15,p:1000,q:0,bal:true,sup:true}],
+};
+let R=null, F=null, timer=null, playing=null;
+function build(){
+  for(const k in PRE){ const b=document.createElement('button'); b.type='button'; b.textContent=PRE[k][0]; b.dataset.k=k; b.onclick=()=>{ Object.assign(S,PRE[k][1]); history.replaceState(null,'','#'+k); upd(); }; $('presets').appendChild(b); }
+  for(const id of ['n','w','p','q']) $(id).addEventListener('input',e=>{ S[id]=+e.target.value; limitS(id); sync(); clearTimeout(timer); timer=setTimeout(upd,120); });
+  $('th').addEventListener('input',e=>{ S.k=+e.target.value; drawInstant(); });
+  $('bal').onclick=()=>{ S.bal=!S.bal; upd(); }; $('sup').onclick=()=>{ S.sup=!S.sup; upd(); };
+  $('play').onclick=()=>{ if(playing){ clearInterval(playing); playing=null; $('play').textContent='Animar'; return; } $('play').textContent='Pausar'; playing=setInterval(()=>{ S.k=(S.k+1)%100; $('th').value=S.k; drawInstant(); },60); };
+}
+function limitS(id){ const s=Math.hypot(S.p,S.q); if(s>1000){ if(id==='q') S.p=Math.sign(S.p)*Math.sqrt(1000*1000-S.q*S.q); else S.q=Math.sign(S.q)*Math.sqrt(Math.max(0,1000*1000-S.p*S.p)); S.p=Math.round(S.p/10)*10; S.q=Math.round(S.q/10)*10; } }
+function sync(){
+  for(const id of ['n','w','p','q']) $(id).value=S[id];
+  $('o_n').textContent=S.n+' ('+fmt(640/S.n,1)+' kV c/u)'; $('o_w').textContent=fmt(S.w)+' kJ/MVA'; $('o_p').textContent=signed(S.p)+' MW'; $('o_q').textContent=signed(S.q)+' Mvar';
+  $('bal').setAttribute('aria-pressed',String(S.bal)); $('sup').setAttribute('aria-pressed',String(S.sup));
+  document.querySelectorAll('#presets button').forEach(b=>{ const p=PRE[b.dataset.k][1]; b.setAttribute('aria-pressed',String(Object.keys(p).every(k=>p[k]===S[k]))); });
+}
+function upd(){ sync(); R=mmcSim({N:S.n,P:S.p,Q:S.q,bal:S.bal,sup:S.sup,W:S.w}); F=dcFault({Idc0:Math.abs(S.p)/640}); draw(); }
+function draw(){
+  const xs=R.t, o={x0:0,x1:40,xstep:10,xunit:' ms',R:26,ends:false};
+  const vmax=Math.ceil(380/100)*100;
+  const g1=lineChart($('c1'),xs,[{c:'s2',data:R.e,dash:true,w:1.6},{c:'s1',data:R.vph,w:1.8}],{...o,y0:-vmax,y1:vmax,ystep:200,over:(svg,X,Y)=>instLine(svg,X,Y,-vmax,vmax,'l1')});
+  hoverLayer($('c1'),g1,xs,[{c:'s1',data:R.vph}],$('r1'),i=>`${fmt(xs[i],1)} ms · MMC ${fmt(R.vph[i])} kV · referencia ${fmt(R.e[i])} kV · ${R.nu[i]} SM insertados arriba`);
+  const im=Math.max(1,Math.ceil(Math.max(...R.iu.map(Math.abs),...R.il.map(Math.abs))*1.15));
+  const g2=lineChart($('c2'),xs,[{c:'s1',data:R.iu,w:1.8},{c:'s2',data:R.il,w:1.8},{c:'s3',data:R.ic,dash:true,w:1.6}],{...o,y0:-im,y1:im,ydec:im<4?1:0,ystep:im<4?im/2:niceStep(2*im,4),over:(svg,X,Y)=>instLine(svg,X,Y,-im,im,'l2')});
+  hoverLayer($('c2'),g2,xs,[{c:'s1',data:R.iu},{c:'s2',data:R.il}],$('r2'),i=>`${fmt(xs[i],1)} ms · superior ${fmt(R.iu[i],2)} kA · inferior ${fmt(R.il[i],2)} kA · común ${fmt(R.ic[i],2)} kA`);
+  // condensadores
+  const allv=R.vcu.flat(); let y0=Math.min(...allv), y1=Math.max(...allv); const pad=(y1-y0)*0.1+R.Vsm*0.02; y0=Math.max(-R.Vsm*0.5,y0-pad); y1=Math.min(R.Vsm*4,y1+pad);
+  const ser=R.vcu.map((d,j)=>({c:['s1','s2','s3','s4','s5','s6'][j%6],data:d,w:1.1}));
+  const g3=lineChart($('c3'),xs,ser,{...o,y0,y1,ydec:R.Vsm<20?1:0,mid:(svg,X,Y)=>{ el('line',{x1:X(0),x2:X(40),y1:Y(R.Vsm),y2:Y(R.Vsm),stroke:'var(--ink)','stroke-dasharray':'4 3'},svg); el('text',{x:X(40)-4,y:Y(R.Vsm)-5,'text-anchor':'end',class:'axt'},svg,'nominal '+fmt(R.Vsm,1)+' kV'); }});
+  hoverLayer($('c3'),g3,xs,[],$('r3'),i=>{ const v=R.vcu.map(a=>a[i]); return `${fmt(xs[i],1)} ms · mín ${fmt(Math.min(...v),1)} kV · máx ${fmt(Math.max(...v),1)} kV`; });
+  $('leg3').innerHTML=`<span>${S.n} curvas, una por submódulo equivalente${S.bal&&R.spreadPct<2?': con balance quedan casi superpuestas':''}</span>`;
+  drawPQ(); drawFault(); drawInstant(); tiles();
+}
+function instLine(svg,X,Y,a,b,id){ el('line',{x1:0,x2:0,y1:Y(b),y2:Y(a),stroke:'var(--ink)','stroke-dasharray':'3 3',id,'data-x0':X(0),'data-x1':X(40)},svg); }
+function drawInstant(){
+  if(!R) return; const n=R.t.length, i=Math.min(n-1,Math.round(S.k/99*(n-1)*0.5)); // primer ciclo de los dos mostrados
+  for(const id of ['l1','l2']){ const l=document.getElementById(id); if(!l) continue; const x=+l.dataset.x0+(+l.dataset.x1-+l.dataset.x0)*R.t[i]/40; l.setAttribute('x1',x); l.setAttribute('x2',x); }
+  $('o_th').textContent=fmt(S.k/99*360)+'°';
+  const svg=$('leg'); svg.innerHTML=''; const N=S.n, cols=N>20?2:1, per=Math.ceil(N/cols);
+  const h=Math.min(16,170/per), bw=cols===2?40:56, gap=h<10?1:2;
+  const insU=new Set(R.insU[i]), insL=new Set(R.insL[i]);
+  el('text',{x:150,y:14,'text-anchor':'middle',class:'axt'},svg,'+320 kV · polo +');
+  el('line',{x1:150,y1:20,x2:150,y2:450,stroke:'var(--muted)','stroke-width':1.5},svg);
+  const arm=(y0,ins,vc,lbl)=>{ for(let j=0;j<N;j++){ const c=Math.floor(j/per), r=j%per; const x=150-(cols*bw+(cols-1)*6)/2+c*(bw+6), y=y0+r*h;
+      const dev=(vc[j][i]-R.Vsm)/R.Vsm, on=ins.has(j);
+      const col=Math.abs(dev)>0.3?'var(--crit)':Math.abs(dev)>0.12?'var(--warn)':'var(--accent)';
+      el('rect',{x,y,width:bw,height:h-gap,rx:2,fill:on?col:'var(--surface)',stroke:col,'stroke-width':1.2,opacity:on?0.9:1},svg);
+      if(h>=12) el('text',{x:x+bw/2,y:y+h-gap-3,'text-anchor':'middle',class:'axt',style:`fill:${on?'#fff':'var(--ink)'};font-size:9px`},svg,fmt(vc[j][i],cols===2?0:1)); }
+    el('text',{x:150+(cols*bw)/2+10,y:y0+per*h/2,class:'axt'},svg,lbl); };
+  arm(26,insU,R.vcu,`${insU.size}/${N} ins.`);
+  const yr=26+per*h+6; el('rect',{x:140,y:yr,width:20,height:16,rx:3,fill:'var(--surface)',stroke:'var(--ink)'},svg); el('text',{x:166,y:yr+12,class:'axt'},svg,'reactor');
+  const yac=yr+28; el('circle',{cx:150,cy:yac,r:4,fill:'var(--ink)'},svg); el('line',{x1:150,y1:yac,x2:280,y2:yac,stroke:'var(--s2)','stroke-width':2},svg);
+  el('text',{x:278,y:yac-6,'text-anchor':'end',class:'lbl',fill:'var(--s2)'},svg,`fase: ${fmt(R.vph[i])} kV`); el('text',{x:278,y:yac+14,'text-anchor':'end',class:'axt'},svg,`i_AC ${fmt(R.iac[i],2)} kA`);
+  el('rect',{x:140,y:yac+10,width:20,height:16,rx:3,fill:'var(--surface)',stroke:'var(--ink)'},svg);
+  arm(yac+32,insL,R.vcl,`${insL.size}/${N} ins.`);
+  el('text',{x:150,y:466,'text-anchor':'middle',class:'axt'},svg,'−320 kV · polo −');
+  el('text',{x:6,y:40,class:'axt'},svg,`i_u ${fmt(R.iu[i],2)} kA`); el('text',{x:6,y:yac+50,class:'axt'},svg,`i_l ${fmt(R.il[i],2)} kA`);
+}
+function drawPQ(){ const s=$('pq'); s.innerHTML=''; const cx=200, cy=150, r=120, k=r/1000;
+  el('line',{x1:40,x2:360,y1:cy,y2:cy,class:'gridl'},s); el('line',{x1:cx,x2:cx,y1:20,y2:285,class:'gridl'},s);
+  el('circle',{cx,cy,r,fill:'var(--accent-soft)',stroke:'var(--accent)','stroke-width':2,opacity:.8},s);
+  el('text',{x:360,y:cy+30,'text-anchor':'end',class:'axt'},s,'P (MW) →'); el('text',{x:cx+6,y:26,class:'axt'},s,'Q (Mvar)');
+  el('text',{x:cx+r-4,y:cy+16,'text-anchor':'end',class:'axt'},s,'rectifica'); el('text',{x:cx-r+4,y:cy+16,class:'axt'},s,'invierte');
+  el('text',{x:cx+6,y:cy-r+16,class:'axt'},s,'entrega Q'); el('text',{x:cx+6,y:cy+r-6,class:'axt'},s,'absorbe Q');
+  const px=cx+S.p*k, py=cy-S.q*k; el('line',{x1:cx,y1:cy,x2:px,y2:py,stroke:'var(--ink)','stroke-width':1.5},s);
+  el('circle',{cx:px,cy:py,r:6,fill:'var(--s2)',stroke:'var(--surface)','stroke-width':2},s);
+  el('text',{x:px+(S.p>=0?-8:8),y:py-10,'text-anchor':S.p>=0?'end':'start',class:'lbl'},s,`${signed(S.p)} MW, ${signed(S.q)} Mvar`); }
+function drawFault(){ const g=lineChart($('c5'),F.t,[{c:'crit',data:F.hb,w:2},{c:'ok',data:F.fb,w:2}],{x0:0,x1:10,xstep:2,xunit:' ms',R:26,y0:0,y1:6,ystep:1,ends:false,over:(svg,X,Y)=>{ el('line',{x1:X(F.tb),x2:X(F.tb),y1:Y(6),y2:Y(0),stroke:'var(--ink)','stroke-dasharray':'3 3'},svg); el('text',{x:X(F.tb)+4,y:Y(5.6),class:'axt'},svg,'bloqueo de IGBT'); }});
+  $('h5').textContent=`La corriente sube unos ${fmt(640/(0.05*2/3+0.05)/1000,1)} kA por milisegundo hasta que los IGBT se bloquean (${fmt(F.tb,2)} ms). Con medio puente, la red AC sigue alimentando la falla por los diodos; con puente completo, los condensadores invertidos la llevan a cero. Curvas ilustrativas.`; }
+function tiles(){
+  const rip=R.ripple, ic2=R.ic2, spr=R.spreadPct, diverge=!S.bal && spr>20;
+  $('tiles').innerHTML=`
+    <div class="tile ok"><span class="k">Niveles de la tensión de fase</span><span class="v">${R.levels}</span><span class="s">${S.n} SM por rama de ${fmt(R.Vsm,1)} kV</span></div>
+    <div class="tile ${rip>15?'warn':'ok'}${rip>40?' crit':''}"><span class="k">Rizado de los condensadores</span><span class="v">±${fmt(Math.min(rip,999),1)} %</span><span class="s">${fmt(R.vmin,1)} a ${fmt(R.vmax,1)} kV</span></div>
+    <div class="tile ${ic2>0.4?'warn':'ok'}"><span class="k">Corriente circulante (100 Hz)</span><span class="v">${fmt(ic2,2)} kA</span><span class="s">pico; I<sub>DC</sub>/3 = ${fmt(R.Idc/3,2)} kA</span></div>
+    <div class="tile ${diverge?'crit':'ok'}"><span class="k">Dispersión entre submódulos</span><span class="v">${fmt(Math.min(spr,999),1)} %</span><span class="s">diferencia de tensión media</span></div>`;
+  let m, lvl='ok';
+  if(diverge){ m=`El balance se apagó al comienzo de los 40 ms que se muestran. Desde ese momento se insertan siempre los mismos submódulos: esos se cargan sin control mientras los demás quedan quietos, y en dos ciclos algunos ya duplican su tensión. En una estación real, la protección de sobretensión de cada submódulo actuaría en milisegundos. El balance (ordenar por tensión y elegir según el sentido de la corriente) es imprescindible.`; lvl='crit'; }
+  else if(!S.sup){ m=`Sin supresión, circula entre las fases una corriente de 100 Hz de ${fmt(ic2,2)} kA de pico, que no sale ni al lado AC ni al DC: solo agrega pérdidas y rizado (±${fmt(rip,1)} %). El control la lleva casi a cero.`; lvl='warn'; }
+  else if(rip>15){ m=`Con ${fmt(S.w)} kJ/MVA de energía almacenada, cada condensador oscila ±${fmt(rip,1)} %: hacen falta submódulos y semiconductores para tensiones más altas. Por eso se diseña con 30–40 kJ/MVA.`; lvl='warn'; }
+  else m=`Cada rama inserta entre 0 y ${S.n} submódulos según la tensión que necesita. Las ramas llevan un tercio de la corriente DC (${fmt(R.Idc/3,2)} kA) más la mitad de la corriente AC, y los condensadores oscilan ±${fmt(rip,1)} % alrededor de ${fmt(R.Vsm,1)} kV.`;
+  const st=$('status'); st.textContent=m; st.className='status '+lvl;
+}
+function fromHash(){ const k=location.hash.slice(1); if(PRE[k]) Object.assign(S,PRE[k][1]); }
+build(); fromHash(); upd(); addEventListener('hashchange',()=>{ fromHash(); upd(); });
+</script>
+</body>
+</html>

@@ -2,6 +2,13 @@
 
 Capítulos de un posible libro sobre transmisión HVDC, cada uno con sus simuladores interactivos.
 
+## Capítulo 3 · El VSC por dentro
+
+- **Capítulo en PDF:** [docs/capitulo-3-el-vsc-por-dentro.pdf](docs/capitulo-3-el-vsc-por-dentro.pdf)
+- **Simulador:** [Dentro de un MMC: submódulos, corrientes y balance](https://ajrcjf-web.github.io/hvdc-de-hoy/mmc.html). Escenarios: `#base`, `#pocos-niveles`, `#muchos-niveles`, `#inversor`, `#reactiva`, `#sin-supresion`, `#sin-balance`, `#poca-energia`.
+
+![Simulador Dentro de un MMC](docs/captura-mmc.jpg)
+
 ## Capítulo 2 · Tecnologías y topologías actuales
 
 - **Capítulo en PDF:** [docs/capitulo-2-tecnologias-y-topologias-actuales.pdf](docs/capitulo-2-tecnologias-y-topologias-actuales.pdf)
@@ -40,7 +47,7 @@ Los costos, resistencias y anchos de franja son valores típicos ilustrativos, n
 
 ## Uso
 
-Cada simulador es una sola página HTML sin dependencias de compilación: abrir `index.html`, `topologias.html` o `multiterminal.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
+Cada simulador es una sola página HTML sin dependencias de compilación: abrir `index.html`, `topologias.html`, `multiterminal.html` o `mmc.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
 
 ## Licencia
 
