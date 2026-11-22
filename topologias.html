@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topologías HVDC: monopolo, bipolo y sus fallas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#18222d; --muted:#5b6876; --rule:#d5dbe1;
+  --accent:#0b6a8f; --accent-soft:#dcedf4;
+  --ok:#2c7a4b; --warn:#b26a00; --crit:#c0342b; --off:#9aa5b0;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#6b3fa0;
+  --display:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+    --accent:#5cb8dc; --accent-soft:#1d3a48;
+    --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+  --accent:#5cb8dc; --accent-soft:#1d3a48;
+  --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1260px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline;justify-content:space-between}
+.crumbs{font-size:13px;color:var(--muted)} .crumbs a{color:var(--accent)}
+h1{font-family:var(--display);font-size:26px;font-weight:600;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin:0;color:var(--muted)}
+h3{font-size:13px;font-weight:600;margin:0}
+.formula{font-family:var(--mono);font-size:14px;color:var(--muted)} .formula b{color:var(--ink);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px 16px}
+.col{display:flex;flex-direction:column;gap:10px}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:14px;align-items:start}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:13px;padding:6px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
+button:hover{background:var(--accent-soft)}
+button[aria-pressed="true"],button.primary{background:var(--accent);color:var(--surface)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.row label{font-size:14px}
+.row output{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+.row input[type=range]{grid-column:1/-1}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--surface);color:var(--ink);max-width:100%}
+.lab{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.status{font-size:14px;padding:8px 12px;border-radius:4px;background:var(--accent-soft);border-left:4px solid var(--accent)}
+.status.crit{border-left-color:var(--crit)} .status.warn{border-left-color:var(--warn)} .status.ok{border-left-color:var(--ok)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{border:1px solid var(--rule);border-left:4px solid var(--rule);border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;background:var(--surface)}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .s{font-size:12px;color:var(--muted)}
+.tile.ok{border-left-color:var(--ok)} .tile.warn{border-left-color:var(--warn)} .tile.crit{border-left-color:var(--crit)} .tile.ac{border-left-color:var(--accent)}
+svg{width:100%;height:auto;display:block}
+.chart{display:flex;flex-direction:column;gap:4px}
+.chart svg{touch-action:none}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted)}
+.clegend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.clegend i.dash{border-top-style:dashed}
+.clegend b.sw{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:6px;opacity:.5}
+.readout{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;font-variant-numeric:tabular-nums}
+.gridl{stroke:var(--rule);stroke-width:1} .zero{stroke:var(--muted);stroke-width:1}
+.axt{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.endl{font-family:var(--body);font-size:11px;fill:var(--ink)}
+.cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3}
+.lbl{font-family:var(--body);font-size:12px;font-weight:600;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.eq{font-family:var(--mono);font-size:14px;background:var(--bg);border-radius:4px;padding:8px 10px;line-height:1.7;overflow-x:auto;white-space:nowrap}
+.eq b{color:var(--accent)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.notes p{margin:6px 0 0;font-size:14px;color:var(--muted);max-width:65ch}
+@media (max-width:940px){.main{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ctrl{display:flex;flex-direction:column;gap:12px}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.btns button{font-size:12.5px;padding:4px 9px}
+button:disabled{opacity:.35;cursor:not-allowed}
+.tile.crit{border-left-color:var(--crit)} .tile.warn{border-left-color:var(--warn)} .tile.ok{border-left-color:var(--ok)}
+#dia{width:100%;display:block}
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;font-size:13.5px}
+.info div{border-top:1px solid var(--rule);padding-top:6px}
+.info b{display:block;font-size:12px;color:var(--muted);font-weight:500}
+@media (max-width:940px){.info{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="col" style="gap:2px"><span class="crumbs">Capítulo 2 · Tecnologías y topologías actuales · <a href="multiterminal.html">simulador de redes multiterminal</a></span>
+    <h1>Topologías HVDC: monopolo, bipolo y sus fallas</h1></div>
+    <div class="formula">monopolo: <b>P = U·I</b> &nbsp;·&nbsp; simétrico y bipolo: <b>P = 2·U·I</b> &nbsp;·&nbsp; pérdidas: <b>Σ R·I²</b></div>
+  </header>
+  <div class="tiles" id="tiles"></div>
+  <div class="main">
+    <div class="col" style="gap:14px">
+      <section class="panel col" style="gap:10px" aria-label="Esquema">
+        <h2 id="cfgname"></h2>
+        <div class="status" id="status" role="status"></div>
+        <svg id="dia" viewBox="0 0 760 330" role="img" aria-label="Esquema de la topología con corrientes y tensiones"></svg>
+        <div class="info" id="info"></div>
+      </section>
+    </div>
+    <section class="panel ctrl" aria-label="Controles">
+      <h2>Escenarios</h2>
+      <div class="btns" id="presets"></div>
+      <h2>Topología</h2>
+      <div class="btns" id="cfgs" role="group" aria-label="Topología"></div>
+      <h2>Evento</h2>
+      <div class="btns" id="evs" role="group" aria-label="Evento"></div>
+      <h2>Parámetros</h2>
+      <div class="row"><label for="pn">Potencia nominal del enlace</label><output id="o_pn"></output><input type="range" id="pn" min="200" max="4000" step="100"></div>
+      <div class="row"><label for="p">Consigna de potencia</label><output id="o_p"></output><input type="range" id="p" min="0" max="4000" step="50"></div>
+      <div class="row"><label for="u">Tensión de polo a tierra U</label><output id="o_u"></output><input type="range" id="u" min="150" max="800" step="5"></div>
+      <div class="row"><label for="l">Longitud de la línea o cable</label><output id="o_l"></output><input type="range" id="l" min="20" max="1000" step="10"></div>
+      <div class="row"><label for="ovl">Sobrecarga admisible de un polo</label><output id="o_ovl"></output><input type="range" id="ovl" min="1" max="1.5" step="0.05"></div>
+      <p class="hint">Resistencia de 0,0095 Ω/km por conductor. La tierra se considera de resistencia despreciable. Valores ilustrativos.</p>
+    </section>
+  </div>
+  <section class="notes">
+    <div class="panel"><h2>Cómo leerlo</h2><p>Elija una topología y provoque un evento. Mire qué conductores siguen llevando corriente, cuánta potencia se pierde y si la corriente vuelve por tierra. Repita con otra topología: la diferencia entre ellas está casi toda en lo que pasa cuando algo falla.</p></div>
+    <div class="panel"><h2>Qué calcula</h2><p>Corriente por polo I = P/U (monopolo) o P/(2U) (simétrico y bipolo). En monopolar, el polo sano se limita a la sobrecarga admisible. Pérdidas R·I² en cada conductor que lleva corriente. Desbalance de 1 % entre polos en operación bipolar.</p></div>
+    <div class="panel"><h2>Qué deja fuera</h2><p>Transitorios de la falla, tiempos de maniobra, pérdidas en las estaciones, resistencia de electrodos y del terreno, y los límites de corriente de tierra que imponga cada regulador.</p></div>
+  </section>
+</div>
+<script>
+/* ===== Utilidades de dibujo ===== */
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}, parent, text){ const e=document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]); if(text!==undefined) e.textContent=text; if(parent) parent.appendChild(e); return e; }
+const fmt = (v,d=0) => { if(!isFinite(v)) return '∞'; const r = Math.abs(v) < 0.5*Math.pow(10,-d) ? 0 : v; return r.toFixed(d).replace('-', '−').replace('.', ','); };
+const signed = (v,d=0) => { const t = fmt(v,d); return (v>0 && !/^0(,0+)?$/.test(t) ? '+' : '') + t; };
+function niceStep(range, n){ const raw=range/n, p=Math.pow(10,Math.floor(Math.log10(raw))), m=raw/p; return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p; }
+/* Gráfico de líneas genérico. series: [{c, data, dash, short, w}] sobre xs. */
+function lineChart(svg, xs, series, o){
+  const vb=svg.viewBox.baseVal, W=vb.width, H=vb.height, L=o.L??48, R=o.R??120, T=o.T??10, B=o.B??24;
+  svg.innerHTML='';
+  const x0=o.x0??xs[0], x1=o.x1??xs[xs.length-1], y0=o.y0, y1=o.y1;
+  const X=v=>L+(W-L-R)*(v-x0)/(x1-x0), Y=v=>T+(H-T-B)*(y1-Math.max(y0,Math.min(y1,v)))/(y1-y0);
+  if(o.under) o.under(svg,X,Y);
+  const st=o.ystep||niceStep(y1-y0,4);
+  for(let v=Math.ceil(y0/st-1e-9)*st; v<=y1+1e-9; v+=st){
+    el('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:Math.abs(v)<1e-9?'zero':'gridl'},svg);
+    el('text',{x:L-6,y:Y(v)+4,class:'axt','text-anchor':'end'},svg,fmt(v,o.ydec??0)); }
+  const xst=o.xstep||niceStep(x1-x0,6);
+  for(let v=Math.ceil(x0/xst-1e-9)*xst; v<=x1+1e-9; v+=xst)
+    el('text',{x:X(v),y:H-6,class:'axt','text-anchor':'middle'},svg,fmt(v,o.xdec??0)+(o.xunit||''));
+  if(o.mid) o.mid(svg,X,Y);
+  const ends=[];
+  for(const s of series){
+    let pen=false; const d=s.data.map((v,i)=>{ if(v===null||!isFinite(v)){ pen=false; return ''; } const c=(pen?'L':'M')+X(xs[i]).toFixed(1)+' '+Y(v).toFixed(1); pen=true; return c; }).join('');
+    el('path',{d,fill:'none',stroke:`var(--${s.c})`,'stroke-width':s.w||2,'stroke-dasharray':s.dash?'6 4':'none','stroke-linejoin':'round'},svg);
+    if(s.short && o.ends!==false){ const n=s.data.length-1;
+      el('circle',{cx:X(xs[n]),cy:Y(s.data[n]),r:3.5,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2},svg);
+      ends.push({y:Y(s.data[n]),t:s.short+(s.endv!==false?' '+fmt(s.data[n],o.edec??o.ydec??0)+(o.unit?' '+o.unit:''):'')}); }
+  }
+  ends.sort((a,b)=>a.y-b.y); for(let i=1;i<ends.length;i++) if(ends[i].y-ends[i-1].y<13) ends[i].y=ends[i-1].y+13;
+  for(const e of ends) el('text',{x:W-R+9,y:e.y+4,class:'endl'},svg,e.t);
+  if(o.over) o.over(svg,X,Y);
+  return {X,Y,L,R,T,B,W,H};
+}
+/* Capa de lectura con cursor */
+function hoverLayer(svg, g, xs, series, ro, txt){
+  const cross=el('line',{y1:g.T,y2:g.H-g.B,class:'cross',style:'display:none'},svg);
+  const dots=series.map(s=>el('circle',{r:4,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2,style:'display:none'},svg));
+  const hit=el('rect',{x:g.L,y:g.T,width:g.W-g.L-g.R,height:g.H-g.T-g.B,fill:'transparent'},svg);
+  const move=e=>{ const b=svg.getBoundingClientRect(); const px=(e.clientX-b.left)*g.W/b.width;
+    let i=0, best=1e9; for(let k=0;k<xs.length;k++){ const dd=Math.abs(g.X(xs[k])-px); if(dd<best){best=dd;i=k;} }
+    cross.setAttribute('x1',g.X(xs[i])); cross.setAttribute('x2',g.X(xs[i])); cross.style.display='';
+    series.forEach((s,k)=>{ dots[k].setAttribute('cx',g.X(xs[i])); dots[k].setAttribute('cy',g.Y(s.data[i])); dots[k].style.display=''; });
+    ro.textContent=txt(i); };
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerdown',move);
+  hit.addEventListener('pointerleave',()=>{ cross.style.display='none'; dots.forEach(d=>d.style.display='none'); });
+}
+function arrow(svg, x1,y1,x2,y2, color, w=2.5, head=9){
+  const a=Math.atan2(y2-y1,x2-x1), L=Math.hypot(x2-x1,y2-y1); if(L<1) return;
+  const hx=x2-head*Math.cos(a), hy=y2-head*Math.sin(a);
+  el('line',{x1,y1,x2:hx,y2:hy,stroke:color,'stroke-width':w,'stroke-linecap':'round'},svg);
+  el('polygon',{points:`${x2},${y2} ${hx+head*0.45*Math.sin(a)},${hy-head*0.45*Math.cos(a)} ${hx-head*0.45*Math.sin(a)},${hy+head*0.45*Math.cos(a)}`,fill:color},svg);
+}
+
+// Modelo de topologías punto a punto. U: tensión de polo a tierra (kV). Pn: potencia nominal del enlace (MW).
+// P: consigna (MW). L: km. r: Ω/km por conductor. ovl: sobrecarga admisible de un polo en operación monopolar.
+const CONFIGS = {
+  'mono-tierra': { name:'Monopolo asimétrico, retorno por tierra/mar', ev:['normal','conv','linea'] },
+  'mono-metal':  { name:'Monopolo asimétrico, retorno metálico', ev:['normal','conv','linea'] },
+  'mono-sim':    { name:'Monopolo simétrico', ev:['normal','conv','tierra'] },
+  'bipolo-tierra': { name:'Bipolo con electrodos (retorno por tierra)', ev:['normal','conv','linea','mrtb'] },
+  'bipolo-dmr':  { name:'Bipolo con retorno metálico dedicado', ev:['normal','conv','linea'] },
+  'bipolo-rigido': { name:'Bipolo rígido', ev:['normal','conv','reconf'] },
+  'b2b':         { name:'Espalda con espalda', ev:['normal','conv'] },
+};
+const EVENTS = { normal:'Operación normal', conv:'Falla de un convertidor', linea:'Falla en un conductor de polo',
+  tierra:'Falla de polo a tierra', mrtb:'Pérdida de polo y paso a retorno metálico', reconf:'Pérdida de polo y reconfiguración' };
+
+function topo(cfg, ev, o){
+  const {P, Pn, U, L, r, ovl} = o; const R = r*L; const Pc = Math.min(P, Pn);
+  const res = { conductors:[], convs:[], ground:0, Pt:0, losses:0, msg:'', level:'ok', hvCond:0, trafo:'', lost:0 };
+  const cond = (lbl, V, I, kind='pole', state='ok') => res.conductors.push({lbl, V, I, kind, state});
+  const conv = (lbl, ok=true) => res.convs.push({lbl, ok});
+  if (cfg==='mono-tierra' || cfg==='mono-metal'){
+    const ok = ev==='normal'; const I = ok ? Pc/U : 0; res.Pt = ok ? Pc : 0;
+    conv('polo', ev!=='conv');
+    cond('polo', ok? U : 0, I, 'pole', ev==='linea'?'fault':'ok');
+    if (cfg==='mono-metal') cond('retorno metálico', ok? I*R : 0, -I, 'return'); else res.ground = I;
+    res.hvCond = 1; res.trafo = 'componente DC ≈ U/2 en el devanado de válvulas';
+    res.msg = ok ? (cfg==='mono-tierra' ? `Toda la corriente (${fmt(I,2)} kA) vuelve por tierra o mar a través de los electrodos: barato, pero con corrosión y campo magnético que vigilar.` : `La corriente vuelve por un conductor de baja tensión: sin corriente por tierra, a cambio de un segundo cable.`)
+                 : `Con un solo polo no hay redundancia: ${ev==='conv'?'la falla del convertidor':'la falla del conductor'} deja el enlace fuera de servicio. Se pierden ${fmt(Pc)} MW.`;
+    if (!ok) res.level='crit';
+  }
+  else if (cfg==='mono-sim'){
+    const ok = ev==='normal'; const I = ok ? Pc/(2*U) : 0; res.Pt = ok ? Pc : 0;
+    conv('convertidor', ev==='normal');
+    if (ev==='tierra'){ cond('polo +', 0, 0, 'pole', 'fault'); cond('polo −', -2*U, 0, 'pole', 'stress'); }
+    else { cond('polo +', ok? U : 0, I); cond('polo −', ok? -U : 0, -I); }
+    res.hvCond = 2; res.trafo = 'sin componente DC (el transformador ve solo AC)';
+    if (ok) res.msg = `Dos conductores a +${fmt(U)} y −${fmt(U)} kV llevan ${fmt(I,2)} kA cada uno. El punto medio no está rígido a tierra: no circula corriente por tierra y el transformador no ve tensión continua.`;
+    else if (ev==='conv'){ res.msg = `Un solo convertidor: si falla, se pierde todo el enlace (${fmt(Pc)} MW).`; res.level='crit'; }
+    else { res.msg = `Falla del polo + a tierra: casi no hay corriente de falla, porque la puesta a tierra es de alta impedancia, pero el sistema "se corre": el polo + queda en 0 y el − pasa a −${fmt(2*U)} kV. Cables y equipos deben soportar 2U por un tiempo; el convertidor se bloquea y se pierden ${fmt(Pc)} MW.`; res.level='crit'; }
+  }
+  else if (cfg.startsWith('bipolo')){
+    res.hvCond = 2; res.trafo = 'componente DC ≈ U/2 en cada transformador de polo';
+    const Ipole = Pc/(2*U), Imono = Math.min(Pc, ovl*Pn/2)/U;
+    if (ev==='normal'){
+      const imb = 0.01*Ipole; res.Pt = Pc;
+      conv('polo +'); conv('polo −');
+      cond('polo +', U, Ipole); cond('polo −', -U, -(Ipole-imb));
+      if (cfg==='bipolo-tierra') res.ground = imb;
+      if (cfg==='bipolo-dmr') cond('retorno metálico', 0, -imb, 'return');
+      res.msg = `Cada polo lleva ${fmt(Ipole,2)} kA. Las corrientes se cancelan en el neutro: ${cfg==='bipolo-rigido'?'no hay camino de retorno y no lo necesita':'por el retorno solo circula el pequeño desbalance'}. Son dos circuitos independientes en una sola línea.`;
+    } else if (cfg==='bipolo-rigido' && ev==='conv'){
+      conv('polo +', false); conv('polo −', false); cond('polo +', 0, 0); cond('polo −', 0, 0);
+      res.Pt = 0; res.level='crit';
+      res.msg = `Sin conductor neutro, la falla de un polo obliga a detener los dos: se pierden ${fmt(Pc)} MW hasta reconfigurar.`;
+    } else {
+      const canMetal = !(ev==='linea' && cfg==='bipolo-tierra') ;
+      res.Pt = Imono*U; conv('polo +'); conv('polo −', false);
+      cond('polo +', U, Imono);
+      if (cfg==='bipolo-tierra' && ev!=='mrtb'){ cond('polo −', 0, 0, 'pole', ev==='linea'?'fault':'off'); res.ground = Imono; }
+      else if (cfg==='bipolo-dmr'){ cond('polo −', 0, 0, 'pole', ev==='linea'?'fault':'off'); cond('retorno metálico', Imono*R, -Imono, 'return'); }
+      else { cond('polo − (como retorno)', Imono*R, -Imono, 'return'); }
+      res.level = res.Pt < Pc-1 ? 'warn' : 'ok';
+      const lost = Pc - res.Pt;
+      if (cfg==='bipolo-tierra' && ev==='mrtb') res.msg = `El conductor del polo fallado se usa como retorno: el interruptor de transferencia (MRTB) lleva la corriente de la tierra al conductor. Por tierra ya no circula nada; a cambio, las pérdidas en la línea se duplican.`;
+      else if (cfg==='bipolo-tierra') res.msg = `El polo sano sigue con ${fmt(res.Pt)} MW${lost>1?` (se pierden ${fmt(lost)} MW)`:''}, y su corriente de ${fmt(Imono,2)} kA vuelve por los electrodos. ${ev==='linea'?'Como el conductor fallado no sirve de retorno, se queda en retorno por tierra.':'Para dejar de usar la tierra se puede pasar a retorno metálico (MRTB).'}`;
+      else if (cfg==='bipolo-dmr') res.msg = `El polo sano sigue con ${fmt(res.Pt)} MW${lost>1?` (se pierden ${fmt(lost)} MW)`:''}; la corriente vuelve por el conductor de retorno dedicado, sin pasar por tierra.`;
+      else res.msg = `Reconfigurado: el polo sano opera en monopolo usando el conductor del polo fallado como retorno: ${fmt(res.Pt)} MW. La maniobra lleva tiempo y exige que ese conductor esté sano.`;
+    }
+  }
+  else if (cfg==='b2b'){
+    const ok = ev==='normal'; res.Pt = ok ? Pc : 0; conv('convertidor A', ok); conv('convertidor B');
+    res.hvCond = 0; res.trafo = 'tensión DC baja; se elige para minimizar costo';
+    res.msg = ok ? `Los dos convertidores están en el mismo edificio, sin línea DC: la tensión continua se elige baja y la corriente alta. Su función es unir dos redes asíncronas o controlar el intercambio.` : `Falla de un convertidor: se interrumpe el intercambio de ${fmt(Pc)} MW.`;
+    if (!ok) res.level='crit';
+  }
+  res.losses = res.conductors.reduce((s,c)=>s+c.I*c.I*R,0) + res.ground*0; // la tierra se considera de resistencia despreciable
+  if (cfg==='b2b') res.losses = 0;
+  res.lost = Pc - res.Pt;
+  return res;
+}
+
+const S={cfg:'bipolo-tierra', ev:'normal', pn:2000, p:2000, u:525, l:400, ovl:1.1};
+const PRE={
+  'bipolo':['Bipolo normal',{cfg:'bipolo-tierra',ev:'normal'}],
+  'bipolo-falla':['Bipolo: cae un polo',{cfg:'bipolo-tierra',ev:'conv'}],
+  'mrtb':['Paso a retorno metálico',{cfg:'bipolo-tierra',ev:'mrtb'}],
+  'dmr':['Bipolo con retorno dedicado',{cfg:'bipolo-dmr',ev:'conv'}],
+  'rigido':['Bipolo rígido: cae un polo',{cfg:'bipolo-rigido',ev:'conv'}],
+  'simetrico':['Monopolo simétrico',{cfg:'mono-sim',ev:'normal'}],
+  'simetrico-tierra':['Simétrico: polo a tierra',{cfg:'mono-sim',ev:'tierra'}],
+  'asimetrico':['Monopolo con retorno por tierra',{cfg:'mono-tierra',ev:'normal'}],
+};
+function build(){
+  for(const k in PRE){ const b=document.createElement('button'); b.type='button'; b.textContent=PRE[k][0]; b.dataset.k=k; b.onclick=()=>{ Object.assign(S,PRE[k][1]); history.replaceState(null,'','#'+k); upd(); }; $('presets').appendChild(b); }
+  for(const k in CONFIGS){ const b=document.createElement('button'); b.type='button'; b.textContent=CONFIGS[k].name; b.dataset.k=k; b.onclick=()=>{ S.cfg=k; if(!CONFIGS[k].ev.includes(S.ev)) S.ev='normal'; upd(); }; $('cfgs').appendChild(b); }
+  for(const k in EVENTS){ const b=document.createElement('button'); b.type='button'; b.textContent=EVENTS[k]; b.dataset.k=k; b.onclick=()=>{ S.ev=k; upd(); }; $('evs').appendChild(b); }
+  for(const id of ['pn','p','u','l','ovl']) $(id).addEventListener('input',e=>{ S[id]=+e.target.value; upd(); });
+}
+function upd(){ sync(); draw(); }
+function sync(){
+  for(const id of ['pn','p','u','l','ovl']) $(id).value=S[id];
+  $('o_pn').textContent=fmt(S.pn)+' MW'; $('o_p').textContent=fmt(Math.min(S.p,S.pn))+' MW'+(S.p>S.pn?' (limitada)':'');
+  $('o_u').textContent=(S.cfg.startsWith('mono-')&&S.cfg!=='mono-sim'?'':'±')+fmt(S.u)+' kV'; $('o_l').textContent=fmt(S.l)+' km'; $('o_ovl').textContent=fmt(S.ovl*100)+' %';
+  document.querySelectorAll('#cfgs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.cfg)));
+  document.querySelectorAll('#evs button').forEach(b=>{ b.disabled=!CONFIGS[S.cfg].ev.includes(b.dataset.k); b.setAttribute('aria-pressed',String(b.dataset.k===S.ev)); });
+  document.querySelectorAll('#presets button').forEach(b=>{ const p=PRE[b.dataset.k][1]; b.setAttribute('aria-pressed',String(p.cfg===S.cfg&&p.ev===S.ev)); });
+}
+const COL={pole:'var(--s1)', return:'var(--muted)'};
+function draw(){
+  const o={P:S.p, Pn:S.pn, U:S.u, L:S.l, r:0.0095, ovl:S.ovl}, r=topo(S.cfg,S.ev,o), svg=$('dia'); svg.innerHTML='';
+  $('cfgname').textContent=CONFIGS[S.cfg].name;
+  const st=$('status'); st.textContent=r.msg; st.className='status '+r.level;
+  const W=760, xL=150, xR=610;
+  const grid=(x,lbl)=>{ el('circle',{cx:x,cy:150,r:26,fill:'var(--surface)',stroke:'var(--s2)','stroke-width':2},svg); el('text',{x,y:146,'text-anchor':'middle',class:'lbl',fill:'var(--s2)'},svg,'red'); el('text',{x,y:160,'text-anchor':'middle',class:'lbl',fill:'var(--s2)'},svg,lbl); };
+  const cbox=(x,y,ok,lbl)=>{ el('rect',{x:x-24,y:y-17,width:48,height:34,rx:4,fill:ok?'var(--accent-soft)':'var(--surface)',stroke:ok?'var(--accent)':'var(--crit)','stroke-width':2},svg);
+    el('line',{x1:x-18,y1:y+12,x2:x+18,y2:y-12,stroke:ok?'var(--accent)':'var(--off)','stroke-width':1.5},svg);
+    if(!ok){ el('line',{x1:x-26,y1:y-19,x2:x+26,y2:y+19,stroke:'var(--crit)','stroke-width':2.5},svg); el('line',{x1:x-26,y1:y+19,x2:x+26,y2:y-19,stroke:'var(--crit)','stroke-width':2.5},svg); }
+    el('text',{x,y:y+31,'text-anchor':'middle',class:'axt'},svg,lbl); };
+  if(S.cfg==='b2b'){
+    grid(140,'A'); grid(620,'B');
+    el('rect',{x:250,y:90,width:260,height:120,rx:10,fill:'none',stroke:'var(--muted)','stroke-dasharray':'5 4'},svg);
+    el('text',{x:380,y:82,'text-anchor':'middle',class:'lbl'},svg,'una sola estación, sin línea DC');
+    el('line',{x1:166,y1:150,x2:286,y2:150,stroke:'var(--s2)','stroke-width':2},svg); el('line',{x1:474,y1:150,x2:594,y2:150,stroke:'var(--s2)','stroke-width':2},svg);
+    cbox(310,150,r.convs[0].ok,'conv. A'); cbox(450,150,r.convs[1].ok,'conv. B');
+    el('line',{x1:334,y1:150,x2:426,y2:150,stroke:r.Pt>0?'var(--s1)':'var(--off)','stroke-width':4},svg);
+    el('text',{x:380,y:142,'text-anchor':'middle',class:'lbl',fill:'var(--s1)'},svg,'DC');
+  } else {
+    grid(40,'A'); grid(720,'B');
+    const n=r.conductors.length, ys = n===1?[120]: n===2?[95,205]:[80,150,220];
+    // estaciones
+    el('rect',{x:xL-75,y:40,width:110,height:240,rx:8,fill:'none',stroke:'var(--rule)'},svg);
+    el('rect',{x:xR-35,y:40,width:110,height:240,rx:8,fill:'none',stroke:'var(--rule)'},svg);
+    el('text',{x:xL-20,y:34,'text-anchor':'middle',class:'axt'},svg,'estación A');
+    el('text',{x:xR+20,y:34,'text-anchor':'middle',class:'axt'},svg,'estación B');
+    const poles = r.conductors.filter(c=>c.kind==='pole' || c.lbl.includes('como retorno'));
+    // convertidores: uno por polo (bipolo) o uno solo
+    const convYs = S.cfg.startsWith('bipolo') ? [ys[0], S.cfg==='bipolo-dmr'?ys[2]:ys[1]] : [ (n===1?ys[0]:(ys[0]+ys[1])/2) ];
+    r.convs.forEach((c,i)=>{ const y=convYs[i]; cbox(xL-20,y,c.ok,c.lbl); cbox(xR+20,y,c.ok,c.lbl); el('line',{x1:66,y1:150,x2:xL-44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); el('line',{x1:694,y1:150,x2:xR+44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); });
+    // conductores
+    r.conductors.forEach((c,i)=>{ const y=ys[i]; const on=Math.abs(c.I)>1e-3;
+      let col = c.state==='fault'?'var(--crit)': c.state==='stress'?'var(--s6)': c.kind==='return'?'var(--muted)': (c.V>0?'var(--s2)':'var(--s1)');
+      if(!on && c.state==='ok') col='var(--off)'; if(c.state==='off') col='var(--off)';
+      const sw = c.kind==='return'?3:5;
+      el('line',{x1:xL+4,y1:y,x2:xR-4,y2:y,stroke:col,'stroke-width':sw,'stroke-dasharray':(c.state==='off'||(!on&&c.state==='ok'))?'6 5':'', 'stroke-linecap':'round'},svg);
+      // conexión a convertidores
+      const cy = convYs.length===1?convYs[0]:(c.V<0||c.lbl.includes('−')?convYs[1]:convYs[0]);
+      if (c.kind==='pole' || c.lbl.includes('como retorno')){ el('line',{x1:xL+4,y1:cy,x2:xL+4,y2:y,stroke:'var(--muted)','stroke-width':1.2},svg); el('line',{x1:xR-4,y1:cy,x2:xR-4,y2:y,stroke:'var(--muted)','stroke-width':1.2},svg); }
+      el('text',{x:380,y:y-10,'text-anchor':'middle',class:'lbl'},svg,`${c.lbl} · ${Math.abs(c.V)<0.5?'0':(c.V>0?'+':'−')+fmt(Math.abs(c.V))} kV · ${fmt(Math.abs(c.I),2)} kA`);
+      if(on){ const dir = c.I>0?1:-1; const xm=380+(dir>0?120:-120); arrow(svg,xm-dir*24,y,xm+dir*24,y,'var(--ink)',2,8); }
+      if(c.state==='fault') { el('text',{x:470,y:y+22,class:'lbl',fill:'var(--crit)'},svg,'⚡ falla'); }
+      if(c.state==='stress') { el('text',{x:470,y:y+22,class:'lbl',fill:'var(--s6)'},svg,'sobretensión 2U'); }
+    });
+    // neutro y tierra
+    const hasNeutral = ['mono-tierra','bipolo-tierra','bipolo-dmr','mono-metal'].includes(S.cfg);
+    if (S.cfg==='bipolo-tierra' || S.cfg==='mono-tierra' || S.cfg==='bipolo-dmr'){
+      for(const x of [xL-20, xR+20]){ const yn = S.cfg==='mono-tierra'? 205 : 150; el('line',{x1:x,y1:yn,x2:x,y2:300,stroke:'var(--muted)','stroke-width':1.2,'stroke-dasharray':'3 2'},svg);
+        if(S.cfg!=='bipolo-dmr'){ for(let k=0;k<3;k++) el('line',{x1:x-12+k*4,y1:300+k*5,x2:x+12-k*4,y2:300+k*5,stroke:'var(--muted)','stroke-width':1.5},svg); } }
+      if(S.cfg!=='bipolo-dmr'){ const g=r.ground, on=g>1e-3;
+        el('path',{d:`M${xL-8},318 Q380,338 ${xR+8},318`,fill:'none',stroke:on?'#9a6a3a':'var(--off)','stroke-width':on?3:1.2,'stroke-dasharray':'7 5'},svg);
+        el('text',{x:380,y:312,'text-anchor':'middle',class:'lbl',fill:on?'#9a6a3a':'var(--muted)'},svg,`corriente por tierra/mar: ${fmt(g,2)} kA`); }
+    }
+    if (S.cfg==='mono-sim'){ el('text',{x:380,y:290,'text-anchor':'middle',class:'axt'},svg,'punto medio puesto a tierra con alta impedancia, en el lado AC'); }
+    if (S.cfg==='bipolo-rigido'){ el('text',{x:380,y:290,'text-anchor':'middle',class:'axt'},svg,'sin conductor neutro ni electrodos'); }
+  }
+  // indicadores
+  const Pc=Math.min(S.p,S.pn);
+  $('tiles').innerHTML=`
+    <div class="tile ${r.level}"><span class="k">Potencia transmitida</span><span class="v">${fmt(r.Pt)} MW</span><span class="s">de ${fmt(Pc)} MW de consigna</span></div>
+    <div class="tile ${r.lost>1?(r.Pt>0?'warn':'crit'):'ok'}"><span class="k">Potencia perdida por el evento</span><span class="v">${fmt(r.lost)} MW</span><span class="s">${Pc>0?fmt(100*r.lost/Pc)+' % de la consigna':''}</span></div>
+    <div class="tile ${r.ground>0.05?'warn':''}"><span class="k">Corriente por tierra o mar</span><span class="v">${fmt(r.ground,2)} kA</span><span class="s">${r.ground>0.05?'continua: corrosión y brújulas':'nula o solo desbalance'}</span></div>
+    <div class="tile"><span class="k">Pérdidas en la línea</span><span class="v">${fmt(r.losses,1)} MW</span><span class="s">${r.Pt>0?fmt(100*r.losses/r.Pt,2)+' % de lo transmitido':'—'}</span></div>`;
+  $('info').innerHTML=`<div><b>Conductores de alta tensión</b>${r.hvCond===0?'ninguno (sin línea)':r.hvCond+(r.hvCond===1?' conductor aislado para U':' conductores aislados para U')}</div>
+    <div><b>Transformador de conversión</b>${r.trafo}</div>
+    <div><b>Uso típico</b>${USES[S.cfg]}</div>`;
+}
+const USES={'mono-tierra':'cables submarinos antiguos (Gotland 1, Baltic Cable); hoy restringido por los reguladores',
+ 'mono-metal':'cables submarinos con un segundo cable de baja tensión',
+ 'mono-sim':'la más usada con VSC en cables y eólica marina (±320 kV, ±525 kV)',
+ 'bipolo-tierra':'líneas aéreas LCC de larga distancia (Itaipú, UHVDC chinos)',
+ 'bipolo-dmr':'bipolos VSC nuevos de 2 GW sin corriente por tierra (planes del mar del Norte y Alemania)',
+ 'bipolo-rigido':'opción de menor costo cuando se acepta perder el bipolo ante la falla de un polo',
+ 'b2b':'unir redes asíncronas o de distinta frecuencia (Garabi, convertidores de frecuencia de Japón)'};
+function fromHash(){ const k=location.hash.slice(1); if(PRE[k]) Object.assign(S,PRE[k][1]); }
+build(); fromHash(); upd(); addEventListener('hashchange',()=>{ fromHash(); upd(); });
+</script>
+</body>
+</html>

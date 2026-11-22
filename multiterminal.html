@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redes HVDC multiterminal: estación maestra y droop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#18222d; --muted:#5b6876; --rule:#d5dbe1;
+  --accent:#0b6a8f; --accent-soft:#dcedf4;
+  --ok:#2c7a4b; --warn:#b26a00; --crit:#c0342b; --off:#9aa5b0;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#6b3fa0;
+  --display:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+    --accent:#5cb8dc; --accent-soft:#1d3a48;
+    --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11171d; --surface:#1a222b; --ink:#e6ebf0; --muted:#97a4b1; --rule:#2e3944;
+  --accent:#5cb8dc; --accent-soft:#1d3a48;
+  --ok:#5fbf85; --warn:#e3a13c; --crit:#f0746a; --off:#5d6a77;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#b99be6;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1260px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline;justify-content:space-between}
+.crumbs{font-size:13px;color:var(--muted)} .crumbs a{color:var(--accent)}
+h1{font-family:var(--display);font-size:26px;font-weight:600;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin:0;color:var(--muted)}
+h3{font-size:13px;font-weight:600;margin:0}
+.formula{font-family:var(--mono);font-size:14px;color:var(--muted)} .formula b{color:var(--ink);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:14px 16px}
+.col{display:flex;flex-direction:column;gap:10px}
+.main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:14px;align-items:start}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:13px;padding:6px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer}
+button:hover{background:var(--accent-soft)}
+button[aria-pressed="true"],button.primary{background:var(--accent);color:var(--surface)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.row label{font-size:14px}
+.row output{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+.row input[type=range]{grid-column:1/-1}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--surface);color:var(--ink);max-width:100%}
+.lab{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.status{font-size:14px;padding:8px 12px;border-radius:4px;background:var(--accent-soft);border-left:4px solid var(--accent)}
+.status.crit{border-left-color:var(--crit)} .status.warn{border-left-color:var(--warn)} .status.ok{border-left-color:var(--ok)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tile{border:1px solid var(--rule);border-left:4px solid var(--rule);border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;background:var(--surface)}
+.tile .k{font-size:12px;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .s{font-size:12px;color:var(--muted)}
+.tile.ok{border-left-color:var(--ok)} .tile.warn{border-left-color:var(--warn)} .tile.crit{border-left-color:var(--crit)} .tile.ac{border-left-color:var(--accent)}
+svg{width:100%;height:auto;display:block}
+.chart{display:flex;flex-direction:column;gap:4px}
+.chart svg{touch-action:none}
+.clegend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted)}
+.clegend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.clegend i.dash{border-top-style:dashed}
+.clegend b.sw{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:6px;opacity:.5}
+.readout{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;font-variant-numeric:tabular-nums}
+.gridl{stroke:var(--rule);stroke-width:1} .zero{stroke:var(--muted);stroke-width:1}
+.axt{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.endl{font-family:var(--body);font-size:11px;fill:var(--ink)}
+.cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3}
+.lbl{font-family:var(--body);font-size:12px;font-weight:600;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.eq{font-family:var(--mono);font-size:14px;background:var(--bg);border-radius:4px;padding:8px 10px;line-height:1.7;overflow-x:auto;white-space:nowrap}
+.eq b{color:var(--accent)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.notes p{margin:6px 0 0;font-size:14px;color:var(--muted);max-width:65ch}
+@media (max-width:940px){.main{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.ctrl{display:flex;flex-direction:column;gap:12px}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.btns button{font-size:12.5px;padding:4px 9px}
+.tile.crit{border-left-color:var(--crit)} .tile.warn{border-left-color:var(--warn)} .tile.ok{border-left-color:var(--ok)}
+#net{width:100%;display:block}
+.st{border:1px solid var(--rule);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.st .h{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+.st .h b{font-weight:600}
+.st .seg{display:flex;gap:4px;flex-wrap:wrap}
+.st .seg button{font-size:12px;padding:2px 8px;font-family:var(--mono)}
+.st.trip{opacity:.6}
+.tog{font-size:12px;padding:2px 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="col" style="gap:2px"><span class="crumbs">Capítulo 2 · Tecnologías y topologías actuales · <a href="topologias.html">simulador de topologías</a></span>
+    <h1>Redes HVDC multiterminal: estación maestra y droop</h1></div>
+    <div class="formula">en cada nodo: <b>P<sub>i</sub> = V<sub>i</sub>·Σ G<sub>ij</sub>(V<sub>i</sub> − V<sub>j</sub>)</b> &nbsp;·&nbsp; droop: <b>P = P<sub>0</sub> + K·(V<sub>0</sub> − V)</b></div>
+  </header>
+  <div class="tiles" id="tiles"></div>
+  <div class="main">
+    <div class="col" style="gap:14px">
+      <section class="panel col" style="gap:10px" aria-label="Red">
+        <h2>Red DC de cuatro estaciones · ±320 kV (640 kV entre polos)</h2>
+        <div class="status" id="status" role="status"></div>
+        <svg id="net" viewBox="0 10 680 330" role="img" aria-label="Red DC con flujos y tensiones"></svg>
+        <p class="hint">Flecha: sentido del flujo en cada cable. Estaciones en <span style="color:var(--s2)">naranja</span> inyectan potencia en la red DC (rectifican); en <span style="color:var(--s1)">azul</span> la extraen (invierten). El anillo indica la estación que controla la tensión.</p>
+      </section>
+    </div>
+    <section class="panel ctrl" aria-label="Controles">
+      <h2>Escenarios</h2>
+      <div class="btns" id="presets"></div>
+      <h2>Estaciones</h2>
+      <div id="sts" class="col" style="gap:8px"></div>
+      <h2>Red</h2>
+      <div class="btns"><button type="button" id="ring">Cerrar el anillo C–D</button><button type="button" id="cut">Abrir el cable A–C</button></div>
+      <div class="row"><label for="dp">Droop (desvío de tensión a potencia nominal)</label><output id="o_dp"></output><input type="range" id="dp" min="2" max="10" step="0.5"></div>
+      <p class="hint">Cables de 0,0095 Ω/km por conductor. Valores ilustrativos.</p>
+    </section>
+  </div>
+  <section class="notes">
+    <div class="panel"><h2>Cómo leerlo</h2><p>En una red DC la potencia que entra tiene que ser igual a la que sale más las pérdidas, en todo instante. Alguien tiene que absorber el desequilibrio: una estación maestra que fija la tensión, o varias en droop que se lo reparten. Haga caer una estación y mire quién compensa.</p></div>
+    <div class="panel"><h2>Qué calcula</h2><p>Flujo de potencia DC exacto (Newton) con las tensiones de los cuatro nodos. Estación P: potencia fija. Maestra: tensión fija en 640 kV. Droop: P = P<sub>0</sub> + K·(640 − V), con K = P<sub>nominal</sub> / (droop · 640 kV). Si una estación supera su potencia nominal, satura y deja de regular.</p></div>
+    <div class="panel"><h2>Qué deja fuera</h2><p>La dinámica de los condensadores y de los controles, las fallas DC y su despeje, las protecciones y el control de nivel superior que en una red real reajusta las consignas en segundos o minutos.</p></div>
+  </section>
+</div>
+<script>
+/* ===== Utilidades de dibujo ===== */
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}, parent, text){ const e=document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]); if(text!==undefined) e.textContent=text; if(parent) parent.appendChild(e); return e; }
+const fmt = (v,d=0) => { if(!isFinite(v)) return '∞'; const r = Math.abs(v) < 0.5*Math.pow(10,-d) ? 0 : v; return r.toFixed(d).replace('-', '−').replace('.', ','); };
+const signed = (v,d=0) => { const t = fmt(v,d); return (v>0 && !/^0(,0+)?$/.test(t) ? '+' : '') + t; };
+function niceStep(range, n){ const raw=range/n, p=Math.pow(10,Math.floor(Math.log10(raw))), m=raw/p; return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p; }
+/* Gráfico de líneas genérico. series: [{c, data, dash, short, w}] sobre xs. */
+function lineChart(svg, xs, series, o){
+  const vb=svg.viewBox.baseVal, W=vb.width, H=vb.height, L=o.L??48, R=o.R??120, T=o.T??10, B=o.B??24;
+  svg.innerHTML='';
+  const x0=o.x0??xs[0], x1=o.x1??xs[xs.length-1], y0=o.y0, y1=o.y1;
+  const X=v=>L+(W-L-R)*(v-x0)/(x1-x0), Y=v=>T+(H-T-B)*(y1-Math.max(y0,Math.min(y1,v)))/(y1-y0);
+  if(o.under) o.under(svg,X,Y);
+  const st=o.ystep||niceStep(y1-y0,4);
+  for(let v=Math.ceil(y0/st-1e-9)*st; v<=y1+1e-9; v+=st){
+    el('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),class:Math.abs(v)<1e-9?'zero':'gridl'},svg);
+    el('text',{x:L-6,y:Y(v)+4,class:'axt','text-anchor':'end'},svg,fmt(v,o.ydec??0)); }
+  const xst=o.xstep||niceStep(x1-x0,6);
+  for(let v=Math.ceil(x0/xst-1e-9)*xst; v<=x1+1e-9; v+=xst)
+    el('text',{x:X(v),y:H-6,class:'axt','text-anchor':'middle'},svg,fmt(v,o.xdec??0)+(o.xunit||''));
+  if(o.mid) o.mid(svg,X,Y);
+  const ends=[];
+  for(const s of series){
+    let pen=false; const d=s.data.map((v,i)=>{ if(v===null||!isFinite(v)){ pen=false; return ''; } const c=(pen?'L':'M')+X(xs[i]).toFixed(1)+' '+Y(v).toFixed(1); pen=true; return c; }).join('');
+    el('path',{d,fill:'none',stroke:`var(--${s.c})`,'stroke-width':s.w||2,'stroke-dasharray':s.dash?'6 4':'none','stroke-linejoin':'round'},svg);
+    if(s.short && o.ends!==false){ const n=s.data.length-1;
+      el('circle',{cx:X(xs[n]),cy:Y(s.data[n]),r:3.5,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2},svg);
+      ends.push({y:Y(s.data[n]),t:s.short+(s.endv!==false?' '+fmt(s.data[n],o.edec??o.ydec??0)+(o.unit?' '+o.unit:''):'')}); }
+  }
+  ends.sort((a,b)=>a.y-b.y); for(let i=1;i<ends.length;i++) if(ends[i].y-ends[i-1].y<13) ends[i].y=ends[i-1].y+13;
+  for(const e of ends) el('text',{x:W-R+9,y:e.y+4,class:'endl'},svg,e.t);
+  if(o.over) o.over(svg,X,Y);
+  return {X,Y,L,R,T,B,W,H};
+}
+/* Capa de lectura con cursor */
+function hoverLayer(svg, g, xs, series, ro, txt){
+  const cross=el('line',{y1:g.T,y2:g.H-g.B,class:'cross',style:'display:none'},svg);
+  const dots=series.map(s=>el('circle',{r:4,fill:`var(--${s.c})`,stroke:'var(--surface)','stroke-width':2,style:'display:none'},svg));
+  const hit=el('rect',{x:g.L,y:g.T,width:g.W-g.L-g.R,height:g.H-g.T-g.B,fill:'transparent'},svg);
+  const move=e=>{ const b=svg.getBoundingClientRect(); const px=(e.clientX-b.left)*g.W/b.width;
+    let i=0, best=1e9; for(let k=0;k<xs.length;k++){ const dd=Math.abs(g.X(xs[k])-px); if(dd<best){best=dd;i=k;} }
+    cross.setAttribute('x1',g.X(xs[i])); cross.setAttribute('x2',g.X(xs[i])); cross.style.display='';
+    series.forEach((s,k)=>{ dots[k].setAttribute('cx',g.X(xs[i])); dots[k].setAttribute('cy',g.Y(s.data[i])); dots[k].style.display=''; });
+    ro.textContent=txt(i); };
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerdown',move);
+  hit.addEventListener('pointerleave',()=>{ cross.style.display='none'; dots.forEach(d=>d.style.display='none'); });
+}
+function arrow(svg, x1,y1,x2,y2, color, w=2.5, head=9){
+  const a=Math.atan2(y2-y1,x2-x1), L=Math.hypot(x2-x1,y2-y1); if(L<1) return;
+  const hx=x2-head*Math.cos(a), hy=y2-head*Math.sin(a);
+  el('line',{x1,y1,x2:hx,y2:hy,stroke:color,'stroke-width':w,'stroke-linecap':'round'},svg);
+  el('polygon',{points:`${x2},${y2} ${hx+head*0.45*Math.sin(a)},${hy-head*0.45*Math.cos(a)} ${hx-head*0.45*Math.sin(a)},${hy+head*0.45*Math.cos(a)}`,fill:color},svg);
+}
+
+// Red DC multiterminal: flujo de potencia con estaciones en control de P, de tensión (maestra) o droop.
+// Tensiones en kV (polo a polo), conductancias en S, corrientes en kA, potencias en MW. P>0: la estación inyecta en la red DC (rectifica).
+const MT_V0 = 640, MT_R = 0.019; // Ω/km de lazo (dos conductores de 0,0095 Ω/km)
+const MT_ST = [
+  {id:'A', name:'Tierra norte', rating:1200, x:205, y:70},
+  {id:'B', name:'Tierra sur', rating:1000, x:205, y:280},
+  {id:'C', name:'Eólica marina 1', rating:800, x:475, y:70},
+  {id:'D', name:'Eólica marina 2', rating:600, x:475, y:280},
+];
+const MT_LINES = [
+  {a:0,b:1,L:200,id:'A–B'}, {a:0,b:2,L:180,id:'A–C'}, {a:1,b:3,L:160,id:'B–D'}, {a:2,b:3,L:120,id:'C–D', ring:true},
+];
+function mtSolve(st, opts){
+  // st: [{mode:'P'|'V'|'droop', P, trip}], opts: {ring, lineTrip:[ids], droopPct}
+  const n=st.length, lines=MT_LINES.filter(l=>(opts.ring||!l.ring) && !(opts.lineTrip||[]).includes(l.id));
+  const G=Array.from({length:n},()=>Array(n).fill(0));
+  for(const l of lines){ const g=1/(MT_R*l.L); G[l.a][l.b]-=g; G[l.b][l.a]-=g; G[l.a][l.a]+=g; G[l.b][l.b]+=g; }
+  // islas
+  const isl=Array(n).fill(-1); let k=0;
+  for(let i=0;i<n;i++){ if(isl[i]>=0) continue; const q=[i]; isl[i]=k; while(q.length){ const u=q.pop(); for(const l of lines){ const v=l.a===u?l.b:l.b===u?l.a:-1; if(v>=0&&isl[v]<0){isl[v]=k;q.push(v);} } } k++; }
+  const K = st.map((s,i)=> MT_ST[i].rating/(opts.droopPct/100*MT_V0)); // MW/kV
+  let mode = st.map(s=> s.trip ? 'P' : s.mode), Pset = st.map(s=> s.trip ? 0 : s.P);
+  const sat = Array(n).fill(false), notes=[];
+  let V = Array(n).fill(MT_V0), ok=true, collapsed=[];
+  for(let pass=0; pass<6; pass++){
+    // islas sin control de tensión
+    collapsed=[];
+    for(let c=0;c<k;c++){ const idx=[...Array(n).keys()].filter(i=>isl[i]===c); const hasV=idx.some(i=>mode[i]!=='P'); if(!hasV){ const sum=idx.reduce((s,i)=>s+Pset[i],0); if(idx.length>1 || Math.abs(sum)>1){ if(Math.abs(sum)>1 || idx.some(i=>Math.abs(Pset[i])>1)) collapsed.push(...idx); } } }
+    const act=[...Array(n).keys()].filter(i=>!collapsed.includes(i));
+    const Pof=(i,Vi)=> mode[i]==='droop' ? Pset[i] + K[i]*(MT_V0 - Vi) : Pset[i];
+    const F=(V)=> act.map(i=>{ if(mode[i]==='V') return V[i]-MT_V0; const Ii=G[i].reduce((s,g,j)=>s+g*V[j],0); return V[i]*Ii - Pof(i,V[i]); });
+    for(const i of collapsed) V[i]=NaN;
+    for(let it=0; it<50; it++){
+      const f=F(V), m=act.length; if(Math.max(...f.map(Math.abs))<1e-6) break;
+      const Jm=Array.from({length:m},()=>Array(m).fill(0));
+      act.forEach((j,cj)=>{ const Vp=V.slice(); Vp[j]+=1e-4; const fp=F(Vp); for(let r=0;r<m;r++) Jm[r][cj]=(fp[r]-f[r])/1e-4; });
+      const dx=gauss(Jm,f.map(x=>-x)); if(!dx){ ok=false; break; }
+      act.forEach((j,cj)=>{ V[j]+=Math.max(-50,Math.min(50,dx[cj])); });
+    }
+    // potencias
+    var P = V.map((Vi,i)=> collapsed.includes(i)? 0 : Vi*G[i].reduce((s,g,j)=>s+g*(isNaN(V[j])?0:V[j]),0));
+    // saturación
+    let changed=false;
+    for(let i=0;i<n;i++){ if(mode[i]!=='P' && Math.abs(P[i])>MT_ST[i].rating+0.5){ notes.push(i); sat[i]=true; mode[i]='P'; Pset[i]=Math.sign(P[i])*MT_ST[i].rating; changed=true; } }
+    if(!changed) break;
+  }
+  const flows = lines.map(l=>{ if(isNaN(V[l.a])||isNaN(V[l.b])) return {...l, I:0, P:0, loss:0}; const g=1/(MT_R*l.L), I=g*(V[l.a]-V[l.b]); return {...l, I, P:V[l.a]*I, loss:I*I/g}; });
+  const loss=flows.reduce((s,f)=>s+f.loss,0);
+  return {V, P, mode, sat, collapsed, flows, loss, ok, lines};
+}
+function gauss(A,b){ const n=b.length, M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){ let p=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r; if(Math.abs(M[p][c])<1e-12) return null; [M[c],M[p]]=[M[p],M[c]];
+    for(let r=0;r<n;r++){ if(r===c) continue; const f=M[r][c]/M[c][c]; for(let k=c;k<=n;k++) M[r][k]-=f*M[c][k]; } }
+  return M.map((r,i)=>r[n]/r[i]); }
+
+const S={st:[{mode:'V',P:0,trip:false},{mode:'P',P:-800,trip:false},{mode:'P',P:700,trip:false},{mode:'P',P:500,trip:false}], ring:false, cut:false, dp:5};
+const base=()=>[{mode:'V',P:0,trip:false},{mode:'P',P:-800,trip:false},{mode:'P',P:700,trip:false},{mode:'P',P:500,trip:false}];
+const PRE={
+  'maestra':['Estación maestra',()=>({st:base()})],
+  'pierde-eolica':['Maestra: cae una eólica',()=>{const s=base(); s[2].trip=true; return {st:s};}],
+  'maestra-satura':['Maestra saturada',()=>{const s=base(); s[1].P=0; s[2].P=800; s[3].P=600; return {st:s};}],
+  'pierde-maestra':['Cae la maestra',()=>{const s=base(); s[0].trip=true; return {st:s};}],
+  'droop':['Droop en A y B',()=>{const s=base(); s[0].mode='droop'; s[1].mode='droop'; s[1].P=0; return {st:s};}],
+  'droop-pierde':['Droop: cae A',()=>{const s=base(); s[0].mode='droop'; s[1].mode='droop'; s[1].P=0; s[2].P=600; s[3].P=300; s[0].trip=true; return {st:s};}],
+  'droop-satura':['Droop con mucho viento',()=>{const s=base(); s[0].mode='droop'; s[1].mode='droop'; s[1].P=0; s[2].P=800; s[3].P=600; return {st:s};}],
+  'anillo':['Anillo cerrado',()=>({st:base(), ring:true})],
+};
+function build(){
+  for(const k in PRE){ const b=document.createElement('button'); b.type='button'; b.textContent=PRE[k][0]; b.dataset.k=k; b.onclick=()=>{ applyPre(k); history.replaceState(null,'','#'+k); upd(); }; $('presets').appendChild(b); }
+  MT_ST.forEach((s,i)=>{ const d=document.createElement('div'); d.className='st'; d.id='st'+i;
+    d.innerHTML=`<div class="h"><b>${s.id} · ${s.name}</b><span class="hint">${fmt(s.rating)} MW</span><button type="button" class="tog" id="tr${i}">Disparar</button></div>
+    <div class="seg" id="md${i}"><button type="button" data-m="P">P fija</button><button type="button" data-m="V">maestra V</button><button type="button" data-m="droop">droop</button></div>
+    <div class="row"><label for="p${i}" id="lp${i}">Consigna P</label><output id="op${i}"></output><input type="range" id="p${i}" min="${-s.rating}" max="${s.rating}" step="50"></div>`;
+    $('sts').appendChild(d);
+    d.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ S.st[i].mode=b.dataset.m; upd(); });
+    $('tr'+i).onclick=()=>{ S.st[i].trip=!S.st[i].trip; upd(); };
+    $('p'+i).addEventListener('input',e=>{ S.st[i].P=+e.target.value; upd(); });
+  });
+  $('ring').onclick=()=>{ S.ring=!S.ring; upd(); }; $('cut').onclick=()=>{ S.cut=!S.cut; upd(); };
+  $('dp').addEventListener('input',e=>{ S.dp=+e.target.value; upd(); });
+}
+function applyPre(k){ const p=PRE[k][1](); S.st=p.st; S.ring=!!p.ring; S.cut=false; S.dp=5; S.pre=k; }
+function upd(){ sync(); draw(); }
+function sync(){
+  S.st.forEach((s,i)=>{ $('p'+i).value=s.P; $('op'+i).textContent=s.mode==='V'?'640 kV':signed(s.P)+' MW'; $('p'+i).disabled=s.mode==='V'; $('lp'+i).textContent=s.mode==='droop'?'P₀ a 640 kV':s.mode==='V'?'Tensión fija':'Consigna P';
+    $('md'+i).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===s.mode)));
+    $('tr'+i).textContent=s.trip?'Reconectar':'Disparar'; $('tr'+i).setAttribute('aria-pressed',String(s.trip)); $('st'+i).classList.toggle('trip',s.trip); });
+  $('ring').setAttribute('aria-pressed',String(S.ring)); $('cut').setAttribute('aria-pressed',String(S.cut));
+  $('dp').value=S.dp; $('o_dp').textContent=fmt(S.dp,1)+' %';
+  document.querySelectorAll('#presets button').forEach(b=>{ const p=PRE[b.dataset.k][1](); b.setAttribute('aria-pressed',String(JSON.stringify(p.st)===JSON.stringify(S.st) && !!p.ring===S.ring && !S.cut && S.dp===5)); });
+}
+function draw(){
+  const r=mtSolve(S.st,{ring:S.ring, lineTrip:S.cut?['A–C']:[], droopPct:S.dp}), svg=$('net'); svg.innerHTML='';
+  const allLines=MT_LINES.filter(l=>S.ring||!l.ring);
+  for(const l of allLines){ const a=MT_ST[l.a], b=MT_ST[l.b], f=r.flows.find(x=>x.id===l.id), cut=!f;
+    el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:cut?'var(--off)':'var(--accent)','stroke-width':cut?2:4,'stroke-dasharray':cut?'6 5':''},svg);
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2, horiz=Math.abs(a.y-b.y)<5;
+    if(!cut && Math.abs(f.P)>1){ const s=f.P>0?1:-1, ux=(b.x-a.x)/Math.hypot(b.x-a.x,b.y-a.y), uy=(b.y-a.y)/Math.hypot(b.x-a.x,b.y-a.y);
+      arrow(svg,mx-s*ux*20,my-s*uy*20,mx+s*ux*20,my+s*uy*20,'var(--ink)',2.5,9); }
+    const tx = horiz? mx : mx+14, ty = horiz? my-14 : my+4;
+    el('text',{x:tx,y:ty,'text-anchor':horiz?'middle':'start',class:'lbl'},svg, cut? `${l.id} abierto` : `${l.id} · ${l.L} km · ${fmt(Math.abs(f.P))} MW`);
+  }
+  MT_ST.forEach((s,i)=>{ const st=S.st[i], P=r.P[i], col=r.collapsed.includes(i)||st.trip?'var(--off)':(P>1?'var(--s2)':P<-1?'var(--s1)':'var(--muted)');
+    if(r.mode[i]!=='P' && !st.trip && !r.collapsed.includes(i)) el('circle',{cx:s.x,cy:s.y,r:40,fill:'none',stroke:'var(--ok)','stroke-width':3,'stroke-dasharray':r.mode[i]==='droop'?'5 4':''},svg);
+    el('rect',{x:s.x-36,y:s.y-26,width:72,height:52,rx:6,fill:'var(--surface)',stroke:col,'stroke-width':2.5},svg);
+    el('text',{x:s.x,y:s.y-6,'text-anchor':'middle',class:'lbl',fill:col,'font-size':16},svg,s.id);
+    el('text',{x:s.x,y:s.y+14,'text-anchor':'middle',class:'axt'},svg, st.trip?'disparada': r.collapsed.includes(i)?'bloqueada': (P>0?'+':'')+fmt(P)+' MW');
+    const left=s.x<340; const lx = left? s.x-46 : s.x+46;
+    el('text',{x:lx,y:s.y-6,'text-anchor':left?'end':'start',class:'lbl'},svg,s.name);
+    el('text',{x:lx,y:s.y+10,'text-anchor':left?'end':'start',class:'axt'},svg, isNaN(r.V[i])?'tensión sin control': `${fmt(r.V[i],1)} kV`);
+    el('text',{x:lx,y:s.y+24,'text-anchor':left?'end':'start',class:'axt'},svg, st.trip?'': r.sat[i]?'saturada en su límite': r.mode[i]==='V'?'controla la tensión': r.mode[i]==='droop'?'droop':'potencia fija');
+  });
+  // estado
+  const vs=r.V.filter(v=>!isNaN(v)), vmin=Math.min(...vs), vmax=Math.max(...vs);
+  const ctrl=MT_ST.filter((s,i)=>r.mode[i]!=='P' && !S.st[i].trip && !r.collapsed.includes(i)).map(s=>s.id);
+  let msg, lvl='ok';
+  if(r.collapsed.length){ lvl='crit';
+    const satN=MT_ST.filter((s,i)=>r.sat[i]).map(s=>s.id);
+    msg = satN.length ? `La estación ${satN.join(' y ')} llegó a su límite y satura: ya no queda ninguna estación que absorba el desequilibrio. La tensión DC deriva hasta que actúa la protección o un control superior reduce la generación eólica.`
+                      : `No queda ninguna estación que controle la tensión DC. Sin ella, el desequilibrio entre potencia que entra y que sale carga o descarga los condensadores y la tensión deriva en milisegundos: la protección bloquea la red.`; }
+  else {
+    const m=MT_ST.findIndex((s,i)=>r.mode[i]==='V'&&!S.st[i].trip);
+    if(m>=0) msg=`La estación ${MT_ST[m].id} es la maestra: fija 640 kV y absorbe todo el desequilibrio (${signed(r.P[m])} MW). Cualquier cambio en las demás lo paga ella sola, hasta su límite de ${fmt(MT_ST[m].rating)} MW.`;
+    else { msg=(ctrl.length>1?`Las estaciones ${ctrl.join(' y ')} reparten el desequilibrio según su droop:`:`La estación ${ctrl[0]} absorbe sola el desequilibrio con su droop:`)+` la tensión se aparta de 640 kV (entre ${fmt(vmin,1)} y ${fmt(vmax,1)} kV) ${ctrl.length>1?'y cada una aporta en proporción a su potencia nominal':'cuanto más potencia absorbe, más se aparta la tensión'}.`; if(vmax>640*1.05||vmin<640*0.95) lvl='warn'; }
+    if(r.sat.some(x=>x)){ lvl='warn'; msg+=' Una estación quedó saturada en su límite.'; }
+  }
+  const st=$('status'); st.textContent=msg; st.className='status '+lvl;
+  const inj=r.P.filter(p=>p>0).reduce((a,b)=>a+b,0);
+  $('tiles').innerHTML=`
+    <div class="tile ${lvl}"><span class="k">Control de tensión DC</span><span class="v">${ctrl.length?ctrl.join(' + '):'ninguno'}</span><span class="s">${ctrl.length? (r.mode[MT_ST.findIndex(s=>s.id===ctrl[0])]==='V'?'estación maestra':'droop compartido'):'la red no puede operar'}</span></div>
+    <div class="tile"><span class="k">Tensión en los nodos</span><span class="v">${vs.length?fmt(vmin,1)+' – '+fmt(vmax,1):'—'}</span><span class="s">kV entre polos (nominal 640)</span></div>
+    <div class="tile"><span class="k">Potencia inyectada en la red DC</span><span class="v">${fmt(inj)} MW</span><span class="s">por las estaciones que rectifican</span></div>
+    <div class="tile"><span class="k">Pérdidas en los cables</span><span class="v">${fmt(r.loss,1)} MW</span><span class="s">${inj>0?fmt(100*r.loss/inj,2)+' %':''}</span></div>`;
+}
+function fromHash(){ const k=location.hash.slice(1); if(PRE[k]) applyPre(k); }
+build(); fromHash(); upd(); addEventListener('hashchange',()=>{ fromHash(); upd(); });
+</script>
+</body>
+</html>

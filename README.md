@@ -1,13 +1,23 @@
-# Así llegamos a los sistemas HVDC de hoy
+# HVDC de hoy
 
-Capítulo 1 de un posible libro sobre transmisión HVDC, con su simulador interactivo.
+Capítulos de un posible libro sobre transmisión HVDC, cada uno con sus simuladores interactivos.
+
+## Capítulo 2 · Tecnologías y topologías actuales
+
+- **Capítulo en PDF:** [docs/capitulo-2-tecnologias-y-topologias-actuales.pdf](docs/capitulo-2-tecnologias-y-topologias-actuales.pdf)
+- **Simulador:** [Topologías HVDC: monopolo, bipolo y sus fallas](https://ajrcjf-web.github.io/hvdc-de-hoy/topologias.html). Escenarios: `#bipolo`, `#bipolo-falla`, `#mrtb`, `#dmr`, `#rigido`, `#simetrico`, `#simetrico-tierra`, `#asimetrico`.
+- **Simulador:** [Redes HVDC multiterminal: estación maestra y droop](https://ajrcjf-web.github.io/hvdc-de-hoy/multiterminal.html). Escenarios: `#maestra`, `#pierde-eolica`, `#maestra-satura`, `#pierde-maestra`, `#droop`, `#droop-pierde`, `#droop-satura`, `#anillo`.
+
+![Simulador de topologías](docs/captura-topologias.jpg)
+
+## Capítulo 1 · Así llegamos a los sistemas HVDC de hoy
 
 - **Simulador:** [HVAC frente a HVDC: distancia, cables y corredor](https://ajrcjf-web.github.io/hvdc-de-hoy/)
 - **Capítulo en PDF:** [docs/capitulo-1-asi-llegamos-a-los-sistemas-hvdc-de-hoy.pdf](docs/capitulo-1-asi-llegamos-a-los-sistemas-hvdc-de-hoy.pdf)
 
 ![Captura del simulador](docs/captura.jpg)
 
-## Qué muestra el simulador
+### Qué muestra el simulador del capítulo 1
 
 Compara una transmisión en corriente alterna con un enlace HVDC para la misma potencia y distancia:
 
@@ -30,7 +40,7 @@ Los costos, resistencias y anchos de franja son valores típicos ilustrativos, n
 
 ## Uso
 
-Es una sola página HTML sin dependencias de compilación: abrir `index.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
+Cada simulador es una sola página HTML sin dependencias de compilación: abrir `index.html`, `topologias.html` o `multiterminal.html` en el navegador o publicarlo con GitHub Pages (rama `main`, carpeta raíz).
 
 ## Licencia
 
