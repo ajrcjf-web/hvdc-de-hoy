@@ -202,10 +202,11 @@ const CONFIGS = {
   'bipolo-tierra': { name:'Bipolo con electrodos (retorno por tierra)', ev:['normal','conv','linea','mrtb'] },
   'bipolo-dmr':  { name:'Bipolo con retorno metálico dedicado', ev:['normal','conv','linea'] },
   'bipolo-rigido': { name:'Bipolo rígido', ev:['normal','conv','reconf'] },
+  'bipolo-serie': { name:'Bipolo con dos grupos en serie por polo', ev:['normal','grupo','grupos2','conv'] },
   'b2b':         { name:'Espalda con espalda', ev:['normal','conv'] },
 };
 const EVENTS = { normal:'Operación normal', conv:'Falla de un convertidor', linea:'Falla en un conductor de polo',
-  tierra:'Falla de polo a tierra', mrtb:'Pérdida de polo y paso a retorno metálico', reconf:'Pérdida de polo y reconfiguración' };
+  tierra:'Falla de polo a tierra', grupo:'Sale un grupo de un polo', grupos2:'Sale un grupo en cada polo', mrtb:'Pérdida de polo y paso a retorno metálico', reconf:'Pérdida de polo y reconfiguración' };
 
 function topo(cfg, ev, o){
   const {P, Pn, U, L, r, ovl} = o; const R = r*L; const Pc = Math.min(P, Pn);
@@ -231,6 +232,18 @@ function topo(cfg, ev, o){
     if (ok) res.msg = `Dos conductores a +${fmt(U)} y −${fmt(U)} kV llevan ${fmt(I,2)} kA cada uno. El punto medio no está rígido a tierra: no circula corriente por tierra y el transformador no ve tensión continua.`;
     else if (ev==='conv'){ res.msg = `Un solo convertidor: si falla, se pierde todo el enlace (${fmt(Pc)} MW).`; res.level='crit'; }
     else { res.msg = `Falla del polo + a tierra: casi no hay corriente de falla, porque la puesta a tierra es de alta impedancia, pero el sistema "se corre": el polo + queda en 0 y el − pasa a −${fmt(2*U)} kV. Cables y equipos deben soportar 2U por un tiempo; el convertidor se bloquea y se pierden ${fmt(Pc)} MW.`; res.level='crit'; }
+  }
+  else if (cfg==='bipolo-serie'){
+    res.hvCond = 2; res.trafo = 'cuatro grupos de transformadores por estación, con distinta componente DC (U/4 y 3U/4)';
+    const I = Pc/(2*U), Imono = Math.min(Pc, ovl*Pn/2)/U;
+    if (ev==='normal'){ res.Pt=Pc; ['+ alto','+ bajo','− bajo','− alto'].forEach(l=>conv(l)); cond('polo +',U,I); cond('polo −',-U,-I);
+      res.msg=`Cada polo tiene dos grupos de ${fmt(U/2)} kV en serie, con un interruptor de bypass cada uno. Como en Xiangjiaba–Shanghai o Changji–Guquan: la tensión UHVDC se reparte entre dos grupos para que transformadores y válvulas sean fabricables y transportables.`; }
+    else if (ev==='grupo'){ res.Pt=Pc*0.75; conv('+ alto'); conv('+ bajo'); conv('− bajo'); conv('− alto',false); cond('polo +',U,I); cond('polo −',-U/2,-I);
+      res.msg=`Sale el grupo de alta del polo −: su bypass lo puentea y el polo sigue a media tensión (−${fmt(U/2)} kV) con la misma corriente. La potencia baja al 75 % (${fmt(res.Pt)} MW) y no circula corriente por tierra porque las corrientes de los polos siguen iguales.`; res.level='warn'; }
+    else if (ev==='grupos2'){ res.Pt=Pc*0.5; conv('+ alto',false); conv('+ bajo'); conv('− bajo'); conv('− alto',false); cond('polo +',U/2,I); cond('polo −',-U/2,-I);
+      res.msg=`Sale un grupo en cada polo: el bipolo opera a media tensión (±${fmt(U/2)} kV) y transmite el 50 % (${fmt(res.Pt)} MW), todavía sin corriente por tierra. Es el mismo modo que se usa a propósito con tensión reducida.`; res.level='warn'; }
+    else { res.Pt=Imono*U; conv('+ alto'); conv('+ bajo'); conv('− bajo',false); conv('− alto',false); cond('polo +',U,Imono); cond('polo −',0,0,'pole','off'); res.ground=Imono;
+      res.msg=`Sale el polo − completo: el polo + sigue con ${fmt(res.Pt)} MW y la corriente vuelve por los electrodos, como en cualquier bipolo.`; res.level='warn'; }
   }
   else if (cfg.startsWith('bipolo')){
     res.hvCond = 2; res.trafo = 'componente DC ≈ U/2 en cada transformador de polo';
@@ -275,14 +288,15 @@ function topo(cfg, ev, o){
 
 const S={cfg:'bipolo-tierra', ev:'normal', pn:2000, p:2000, u:525, l:400, ovl:1.1};
 const PRE={
-  'bipolo':['Bipolo normal',{cfg:'bipolo-tierra',ev:'normal'}],
-  'bipolo-falla':['Bipolo: cae un polo',{cfg:'bipolo-tierra',ev:'conv'}],
-  'mrtb':['Paso a retorno metálico',{cfg:'bipolo-tierra',ev:'mrtb'}],
-  'dmr':['Bipolo con retorno dedicado',{cfg:'bipolo-dmr',ev:'conv'}],
-  'rigido':['Bipolo rígido: cae un polo',{cfg:'bipolo-rigido',ev:'conv'}],
-  'simetrico':['Monopolo simétrico',{cfg:'mono-sim',ev:'normal'}],
-  'simetrico-tierra':['Simétrico: polo a tierra',{cfg:'mono-sim',ev:'tierra'}],
-  'asimetrico':['Monopolo con retorno por tierra',{cfg:'mono-tierra',ev:'normal'}],
+  'bipolo':['Bipolo normal',{cfg:'bipolo-tierra',ev:'normal',u:525}],
+  'bipolo-falla':['Bipolo: cae un polo',{cfg:'bipolo-tierra',ev:'conv',u:525}],
+  'mrtb':['Paso a retorno metálico',{cfg:'bipolo-tierra',ev:'mrtb',u:525}],
+  'dmr':['Bipolo con retorno dedicado',{cfg:'bipolo-dmr',ev:'conv',u:525}],
+  'rigido':['Bipolo rígido: cae un polo',{cfg:'bipolo-rigido',ev:'conv',u:525}],
+  'simetrico':['Monopolo simétrico',{cfg:'mono-sim',ev:'normal',u:525}],
+  'simetrico-tierra':['Simétrico: polo a tierra',{cfg:'mono-sim',ev:'tierra',u:525}],
+  'asimetrico':['Monopolo con retorno por tierra',{cfg:'mono-tierra',ev:'normal',u:525}],
+  'uhvdc-grupo':['UHVDC: sale un grupo',{cfg:'bipolo-serie',ev:'grupo',u:800}],
 };
 function build(){
   for(const k in PRE){ const b=document.createElement('button'); b.type='button'; b.textContent=PRE[k][0]; b.dataset.k=k; b.onclick=()=>{ Object.assign(S,PRE[k][1]); history.replaceState(null,'','#'+k); upd(); }; $('presets').appendChild(b); }
@@ -297,7 +311,7 @@ function sync(){
   $('o_u').textContent=(S.cfg.startsWith('mono-')&&S.cfg!=='mono-sim'?'':'±')+fmt(S.u)+' kV'; $('o_l').textContent=fmt(S.l)+' km'; $('o_ovl').textContent=fmt(S.ovl*100)+' %';
   document.querySelectorAll('#cfgs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.cfg)));
   document.querySelectorAll('#evs button').forEach(b=>{ b.disabled=!CONFIGS[S.cfg].ev.includes(b.dataset.k); b.setAttribute('aria-pressed',String(b.dataset.k===S.ev)); });
-  document.querySelectorAll('#presets button').forEach(b=>{ const p=PRE[b.dataset.k][1]; b.setAttribute('aria-pressed',String(p.cfg===S.cfg&&p.ev===S.ev)); });
+  document.querySelectorAll('#presets button').forEach(b=>{ const p=PRE[b.dataset.k][1]; b.setAttribute('aria-pressed',String(p.cfg===S.cfg&&p.ev===S.ev&&p.u===S.u)); });
 }
 const COL={pole:'var(--s1)', return:'var(--muted)'};
 function draw(){
@@ -328,8 +342,8 @@ function draw(){
     el('text',{x:xR+20,y:34,'text-anchor':'middle',class:'axt'},svg,'estación B');
     const poles = r.conductors.filter(c=>c.kind==='pole' || c.lbl.includes('como retorno'));
     // convertidores: uno por polo (bipolo) o uno solo
-    const convYs = S.cfg.startsWith('bipolo') ? [ys[0], S.cfg==='bipolo-dmr'?ys[2]:ys[1]] : [ (n===1?ys[0]:(ys[0]+ys[1])/2) ];
-    r.convs.forEach((c,i)=>{ const y=convYs[i]; cbox(xL-20,y,c.ok,c.lbl); cbox(xR+20,y,c.ok,c.lbl); el('line',{x1:66,y1:150,x2:xL-44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); el('line',{x1:694,y1:150,x2:xR+44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); });
+    const convYs = S.cfg==='bipolo-serie' ? [ys[0]-25, ys[0]+25, ys[1]-25, ys[1]+25] : S.cfg.startsWith('bipolo') ? [ys[0], S.cfg==='bipolo-dmr'?ys[2]:ys[1]] : [ (n===1?ys[0]:(ys[0]+ys[1])/2) ];
+    r.convs.forEach((c,i)=>{ const y=convYs[i]; const lb=S.cfg==='bipolo-serie'?'':c.lbl; cbox(xL-20,y,c.ok,lb); cbox(xR+20,y,c.ok,lb); if(S.cfg==='bipolo-serie'){ el('text',{x:xL-50,y:y+4,'text-anchor':'end',class:'axt'},svg,c.lbl.split(' ')[1]); } el('line',{x1:66,y1:150,x2:xL-44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); el('line',{x1:694,y1:150,x2:xR+44,y2:y,stroke:'var(--s2)','stroke-width':1.5},svg); });
     // conductores
     r.conductors.forEach((c,i)=>{ const y=ys[i]; const on=Math.abs(c.I)>1e-3;
       let col = c.state==='fault'?'var(--crit)': c.state==='stress'?'var(--s6)': c.kind==='return'?'var(--muted)': (c.V>0?'var(--s2)':'var(--s1)');
@@ -337,7 +351,7 @@ function draw(){
       const sw = c.kind==='return'?3:5;
       el('line',{x1:xL+4,y1:y,x2:xR-4,y2:y,stroke:col,'stroke-width':sw,'stroke-dasharray':(c.state==='off'||(!on&&c.state==='ok'))?'6 5':'', 'stroke-linecap':'round'},svg);
       // conexión a convertidores
-      const cy = convYs.length===1?convYs[0]:(c.V<0||c.lbl.includes('−')?convYs[1]:convYs[0]);
+      const cy = convYs.length===1?convYs[0]: convYs.length===4 ? (c.lbl.includes('−')?convYs[3]:convYs[0]) : (c.V<0||c.lbl.includes('−')?convYs[1]:convYs[0]);
       if (c.kind==='pole' || c.lbl.includes('como retorno')){ el('line',{x1:xL+4,y1:cy,x2:xL+4,y2:y,stroke:'var(--muted)','stroke-width':1.2},svg); el('line',{x1:xR-4,y1:cy,x2:xR-4,y2:y,stroke:'var(--muted)','stroke-width':1.2},svg); }
       el('text',{x:380,y:y-10,'text-anchor':'middle',class:'lbl'},svg,`${c.lbl} · ${Math.abs(c.V)<0.5?'0':(c.V>0?'+':'−')+fmt(Math.abs(c.V))} kV · ${fmt(Math.abs(c.I),2)} kA`);
       if(on){ const dir = c.I>0?1:-1; const xm=380+(dir>0?120:-120); arrow(svg,xm-dir*24,y,xm+dir*24,y,'var(--ink)',2,8); }
@@ -346,7 +360,7 @@ function draw(){
     });
     // neutro y tierra
     const hasNeutral = ['mono-tierra','bipolo-tierra','bipolo-dmr','mono-metal'].includes(S.cfg);
-    if (S.cfg==='bipolo-tierra' || S.cfg==='mono-tierra' || S.cfg==='bipolo-dmr'){
+    if (S.cfg==='bipolo-serie' || S.cfg==='bipolo-tierra' || S.cfg==='mono-tierra' || S.cfg==='bipolo-dmr'){
       for(const x of [xL-20, xR+20]){ const yn = S.cfg==='mono-tierra'? 205 : 150; el('line',{x1:x,y1:yn,x2:x,y2:300,stroke:'var(--muted)','stroke-width':1.2,'stroke-dasharray':'3 2'},svg);
         if(S.cfg!=='bipolo-dmr'){ for(let k=0;k<3;k++) el('line',{x1:x-12+k*4,y1:300+k*5,x2:x+12-k*4,y2:300+k*5,stroke:'var(--muted)','stroke-width':1.5},svg); } }
       if(S.cfg!=='bipolo-dmr'){ const g=r.ground, on=g>1e-3;
@@ -373,6 +387,7 @@ const USES={'mono-tierra':'cables submarinos antiguos (Gotland 1, Baltic Cable);
  'bipolo-tierra':'líneas aéreas LCC de larga distancia (Itaipú, UHVDC chinos)',
  'bipolo-dmr':'bipolos VSC nuevos de 2 GW sin corriente por tierra (planes del mar del Norte y Alemania)',
  'bipolo-rigido':'opción de menor costo cuando se acepta perder el bipolo ante la falla de un polo',
+ 'bipolo-serie':'UHVDC LCC de ±800 y ±1100 kV (Xiangjiaba–Shanghai, Changji–Guquan)',
  'b2b':'unir redes asíncronas o de distinta frecuencia (Garabi, convertidores de frecuencia de Japón)'};
 function fromHash(){ const k=location.hash.slice(1); if(PRE[k]) Object.assign(S,PRE[k][1]); }
 build(); fromHash(); upd(); addEventListener('hashchange',()=>{ fromHash(); upd(); });

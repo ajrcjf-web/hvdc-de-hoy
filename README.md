@@ -12,7 +12,7 @@ Capítulos de un posible libro sobre transmisión HVDC, cada uno con sus simulad
 ## Capítulo 2 · Tecnologías y topologías actuales
 
 - **Capítulo en PDF:** [docs/capitulo-2-tecnologias-y-topologias-actuales.pdf](docs/capitulo-2-tecnologias-y-topologias-actuales.pdf)
-- **Simulador:** [Topologías HVDC: monopolo, bipolo y sus fallas](https://ajrcjf-web.github.io/hvdc-de-hoy/topologias.html). Escenarios: `#bipolo`, `#bipolo-falla`, `#mrtb`, `#dmr`, `#rigido`, `#simetrico`, `#simetrico-tierra`, `#asimetrico`.
+- **Simulador:** [Topologías HVDC: monopolo, bipolo y sus fallas](https://ajrcjf-web.github.io/hvdc-de-hoy/topologias.html). Escenarios: `#bipolo`, `#bipolo-falla`, `#mrtb`, `#dmr`, `#rigido`, `#simetrico`, `#simetrico-tierra`, `#asimetrico`, `#uhvdc-grupo`.
 - **Simulador:** [Redes HVDC multiterminal: estación maestra y droop](https://ajrcjf-web.github.io/hvdc-de-hoy/multiterminal.html). Escenarios: `#maestra`, `#pierde-eolica`, `#maestra-satura`, `#pierde-maestra`, `#droop`, `#droop-pierde`, `#droop-satura`, `#anillo`.
 
 ![Simulador de topologías](docs/captura-topologias.jpg)
